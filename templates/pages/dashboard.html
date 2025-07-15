@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  {% include 'header.html' %}
+  
+  <!-- FullCalendar & jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
+
+  <style>
+    #jadwal-calendar {
+      background-color: white;
+      border-radius: 12px;
+      padding: 10px;
+      min-height: 600px;
+    }
+  </style>
+</head>
+
+<body class="g-sidenav-show bg-gray-100">
+  <div class="min-height-300 bg-dark position-absolute w-100"></div>
+
+  {% include 'aside.html' %}
+
+  <main class="main-content position-relative border-radius-lg">
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid py-4">
+      <!-- Ringkasan -->
+      <div class="row">
+        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+          <div class="card">
+            <div class="card-body p-3">
+              <div class="row">
+                <div class="col-8">
+                  <div class="numbers">
+                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Jumlah Guru</p>
+                    <h5 class="font-weight-bolder">{{ jumlah_guru }}</h5>
+                    <p class="mb-0">
+                      <span class="text-success text-sm font-weight-bolder">+2</span> minggu ini
+                    </p>
+                  </div>
+                </div>
+                <div class="col-4 text-end">
+                  <div class="icon icon-shape bg-gradient-primary shadow-primary text-center rounded-circle">
+                    <i class="ni ni-single-02 text-lg opacity-10" aria-hidden="true"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+          <div class="card">
+            <div class="card-body p-3">
+              <div class="row">
+                <div class="col-8">
+                  <div class="numbers">
+                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Jumlah Mapel</p>
+                    <h5 class="font-weight-bolder">{{ jumlah_mapel }}</h5>
+                    <p class="mb-0">
+                      <span class="text-success text-sm font-weight-bolder">Lengkap</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="col-4 text-end">
+                  <div class="icon icon-shape bg-gradient-danger shadow-danger text-center rounded-circle">
+                    <i class="ni ni-book-bookmark text-lg opacity-10" aria-hidden="true"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+          <div class="card">
+            <div class="card-body p-3">
+              <div class="row">
+                <div class="col-8">
+                  <div class="numbers">
+                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Jumlah Kelas</p>
+                    <h5 class="font-weight-bolder">{{ jumlah_kelas }}</h5>
+                    <p class="mb-0">
+                      <span class="text-info text-sm font-weight-bolder">Aktif</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="col-4 text-end">
+                  <div class="icon icon-shape bg-gradient-success shadow-success text-center rounded-circle">
+                    <i class="ni ni-hat-3 text-lg opacity-10" aria-hidden="true"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+          <div class="card">
+            <div class="card-body p-3">
+              <div class="row">
+                <div class="col-8">
+                  <div class="numbers">
+                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Coming Soon</p>
+                    <h5 class="font-weight-bolder"> - - </h5>
+                    <p class="mb-0">
+                      <span class="text-info text-sm font-weight-bolder">Non Aktif</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="col-4 text-end">
+                  <div class="icon icon-shape bg-gradient-success shadow-success text-center rounded-circle">
+                    <i class="ni ni-hat-3 text-lg opacity-10" aria-hidden="true"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kalender -->
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="card z-index-2 h-100">
+            <div class="card-header pb-0 pt-3 bg-transparent">
+              <h6 class="text-capitalize">Kalender Jadwal</h6>
+              <p class="text-sm mb-0">
+                <i class="fa fa-calendar text-primary"></i>
+                <span class="font-weight-bold">Lihat Hari & Tanggal</span>
+              </p>
+            </div>
+            <div class="card-body p-3">
+              <div id="simple-calendar" class="w-100"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+<style>
+  #simple-calendar {
+    font-family: 'Segoe UI', sans-serif;
+    width: 100%;
+    padding: 10px;
+  }
+
+  #simple-calendar table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  #simple-calendar th {
+    background-color: #f8f9fa;
+    color: #5e72e4;
+    font-weight: bold;
+    padding: 12px;
+    border: 1px solid #dee2e6;
+  }
+
+  #simple-calendar td {
+    padding: 14px 0;
+    text-align: center;
+    border: 1px solid #eaeaea;
+    vertical-align: middle;
+    font-size: 14px;
+    color: #344767;
+    background-color: #fff;
+    transition: background-color 0.2s ease;
+  }
+
+  #simple-calendar td:hover {
+    background-color: #f0f4ff;
+  }
+
+  #simple-calendar .today {
+    background-color: #5e72e4;
+    color: white;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: inline-block;
+    line-height: 36px;
+  }
+
+  @media screen and (max-width: 768px) {
+    #simple-calendar td, #simple-calendar th {
+      padding: 10px 4px;
+      font-size: 12px;
+    }
+  }
+</style>
+
+
+<script>
+  function generateCalendar() {
+    const calendarEl = document.getElementById('simple-calendar');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const today = now.getDate();
+
+    const monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+
+    const firstDay = new Date(year, month, 1).getDay(); // Minggu = 0
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    let table = `<h4 class="mb-3 text-dark">${monthNames[month]} ${year}</h4>`;
+    table += `<table><tr>
+                <th>Min</th><th>Sen</th><th>Sel</th><th>Rab</th>
+                <th>Kam</th><th>Jum</th><th>Sab</th>
+              </tr><tr>`;
+
+    for (let i = 0; i < firstDay; i++) {
+      table += '<td></td>';
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const isToday = (day === today) ? `<span class="today">${day}</span>` : day;
+      table += `<td>${isToday}</td>`;
+      if ((day + firstDay) % 7 === 0) {
+        table += '</tr><tr>';
+      }
+    }
+
+    table += '</tr></table>';
+    calendarEl.innerHTML = table;
+  }
+
+  document.addEventListener('DOMContentLoaded', generateCalendar);
+</script>
+
+
+
+</body>
+</html>

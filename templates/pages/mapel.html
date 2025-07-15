@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% include 'header.html' %}
+  {% include 'headKMG.html' %}
+  <style>
+    .table th, .table td {
+      text-align: center;
+      vertical-align: middle !important;
+    }
+  </style>
+</head>
+
+<body class="g-sidenav-show bg-gray-100">
+  <div class="min-height-300 bg-dark position-absolute w-100"></div>
+
+  {% include 'aside.html' %}
+
+  <main class="main-content position-relative border-radius-lg">
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid py-4">
+      <div class="row">
+        <div class="col-12">
+
+          <!-- CARD: Tambah mapel -->
+          <div class="card mb-4">
+            <div class="card-header pb-0">
+              <h6>Tambah Mata Pelajaran Baru</h6>
+            </div>
+            <div class="card-body px-4 pt-4 pb-2">
+              <form method="POST">
+                <div class="mb-3">
+                  <label for="mapel" class="form-label">Nama Mata Pelajaran</label>
+                  <input type="text" class="form-control" name="mapel" id="mapel" placeholder="Nama mapel" required>
+                </div>
+                <div class="d-flex">
+                  <button type="submit" class="btn bg-gradient-info me-2">
+                    <i class="fas fa-save me-1"></i>Tambah
+                  </button>
+                  <a href="{{ url_for('dashboard') }}" class="btn bg-gradient-warning">
+                    <i class="fas fa-arrow-left me-1"></i>Kembali
+                  </a>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- CARD: Daftar mapel -->
+          <div class="card">
+            <div class="card-header pb-0">
+              <h6 class="text-uppercase text-sm mb-0">Daftar Mapel Saat Ini</h6>
+            </div>
+            <div class="card-body px-0 pt-0 pb-2">
+              <div id="mapel-data" data-json='{{ daftar_mapel | tojson | safe }}'></div>
+
+              <div class="table-responsive p-3">
+                <table class="table table-bordered align-items-center mb-0">
+                  <thead class="bg-light">
+                    <tr>
+                      <th style="width: 50px;" class="text-xs font-weight-bolder opacity-8">No</th>
+                      <th class="text-xs font-weight-bolder opacity-8">Nama Mapel</th>
+                      <th style="width: 20%;" class="text-xs font-weight-bolder opacity-8">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mapel-table-body">
+                    <!-- Diisi oleh jQuery -->
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="d-flex justify-content-end px-3 mt-3">
+                <nav>
+                  <ul class="pagination" id="pagination">
+                    <!-- Nomor halaman -->
+                  </ul>
+                </nav>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Core JS & Pagination -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+    let mapelData = [];
+    let currentPage = 1;
+    const rowsPerPage = 10;
+
+    function renderTable() {
+      const tbody = $('#mapel-table-body');
+      tbody.empty();
+
+      const start = (currentPage - 1) * rowsPerPage;
+      const slicedData = mapelData.slice(start, start + rowsPerPage);
+
+      if (slicedData.length === 0) {
+        tbody.append('<tr><td colspan="3" class="text-center text-muted text-sm">Belum ada data mapel.</td></tr>');
+        return;
+      }
+
+      slicedData.forEach((g, i) => {
+        const no = start + i + 1;
+        const row = `
+          <tr>
+            <td class="text-sm text-center align-middle">${no}</td>
+            <td class="text-sm text-center align-middle">${g.mapel}</td>
+            <td class="text-center align-middle">
+              <div class="d-flex justify-content-center gap-2">
+                <a href="/mapel_edit/${encodeURIComponent(g.mapel)}" class="btn btn-sm btn-warning">
+                  <i class="fas fa-edit me-1"></i>Edit
+                </a>
+                <form method="POST" action="/mapel/hapus" onsubmit="return confirm('Yakin ingin menghapus mapel ini?')">
+                  <input type="hidden" name="mapel" value="${g.mapel}">
+                  <button type="submit" class="btn btn-sm btn-danger">
+                    <i class="fas fa-trash me-1"></i>Hapus
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        `;
+        tbody.append(row);
+      });
+
+      renderPagination();
+    }
+
+    function renderPagination() {
+      const totalPages = Math.ceil(mapelData.length / rowsPerPage);
+      const pagination = $('#pagination');
+      pagination.empty();
+
+      for (let i = 1; i <= totalPages; i++) {
+        pagination.append(`
+          <li class="page-item ${i === currentPage ? 'active' : ''}">
+            <a class="page-link page-num" href="#">${i}</a>
+          </li>
+        `);
+      }
+
+      setupPaginationEvents();
+    }
+
+    function setupPaginationEvents() {
+      $('.page-num').on('click', function (e) {
+        e.preventDefault();
+        const selectedPage = parseInt($(this).text());
+        currentPage = selectedPage;
+        renderTable();
+      });
+    }
+
+    $(document).ready(function () {
+      const jsonString = $('#mapel-data').data('json');
+      mapelData = jsonString;
+      renderTable();
+    });
+  </script>
+
+  <!-- Argon Dashboard Scripts -->
+  <script src="../assets/js/core/popper.min.js"></script>
+  <script src="../assets/js/core/bootstrap.min.js"></script>
+  <script src="../assets/js/plugins/perfect-scrollbar.min.js"></script>
+  <script src="../assets/js/plugins/smooth-scrollbar.min.js"></script>
+  <script async defer src="https://buttons.github.io/buttons.js"></script>
+  <script src="../assets/js/argon-dashboard.min.js?v=2.0.4"></script>
+</body>
+</html>

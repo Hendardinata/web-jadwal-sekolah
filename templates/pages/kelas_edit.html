@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% include 'header.html' %}
+  {% include 'headKMG.html' %}
+  <style>
+    .table th, .table td {
+      text-align: center;
+      vertical-align: middle !important;
+    }
+  </style>
+</head>
+
+<body class="g-sidenav-show bg-gray-100">
+  <div class="min-height-300 bg-dark position-absolute w-100"></div>
+
+  {% include 'aside.html' %}
+
+  <main class="main-content position-relative border-radius-lg">
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid py-4">
+      <div class="row">
+        <div class="col-12">
+
+          <!-- CARD: Edit Kelas -->
+          <div class="card mb-4">
+            <div class="card-header pb-0">
+              <h6>Edit Kelas</h6>
+            </div>
+            <div class="card-body px-4 pt-4 pb-2">
+              <form method="POST">
+                <div class="mb-3">
+                  <label for="kelas" class="form-label">Nama Kelas Baru</label>
+                  <input type="text" class="form-control" name="kelas" id="kelas" value="{{ nama_lama }}" required>
+                </div>
+                <div class="d-flex">
+                  <button type="submit" class="btn bg-gradient-success me-2">
+                    <i class="fas fa-save me-1"></i>Simpan
+                  </button>
+                  <a href="{{ url_for('tambah_kelas') }}" class="btn bg-gradient-secondary">
+                    <i class="fas fa-times me-1"></i>Batal
+                  </a>
+                </div>
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Argon Dashboard Scripts -->
+  <script src="../assets/js/core/popper.min.js"></script>
+  <script src="../assets/js/core/bootstrap.min.js"></script>
+  <script src="../assets/js/plugins/perfect-scrollbar.min.js"></script>
+  <script src="../assets/js/plugins/smooth-scrollbar.min.js"></script>
+  <script async defer src="https://buttons.github.io/buttons.js"></script>
+  <script src="../assets/js/argon-dashboard.min.js?v=2.0.4"></script>
+</body>
+</html>

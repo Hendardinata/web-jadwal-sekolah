@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  {% include 'header.html' %}
+  <style>
+    table.table-bordered {
+      border-collapse: collapse !important;
+    }
+
+    table.table-bordered th,
+    table.table-bordered td {
+      border: 1px solid #dee2e6 !important;
+    }
+
+    .table tbody tr {
+      background-color: #ffffff !important;
+    }
+  </style>
+
+  <!-- Font Awesome untuk ikon -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+
+<body class="g-sidenav-show bg-gray-100">
+  <div class="min-height-300 bg-dark position-absolute w-100"></div>
+
+  {% include 'aside.html' %}
+
+  <main class="main-content position-relative border-radius-lg ">
+    <!-- Navbar -->
+    {% include 'navbar.html' %}
+    <!-- End Navbar -->
+
+    <div class="container-fluid py-4">
+      <div class="row">
+        <div class="col-12">
+          <div class="card mb-4">
+            <div class="card-header pb-0">
+              <h6>Informasi Jadwal</h6>
+
+              {% if session['role'] != 'siswa' %}
+              <!-- hanya tampil untuk admin/guru -->
+              <p class="text-sm mb-0">
+                Fitness Jadwal: {{ fitness_info.score }} | Konflik: {{ fitness_info.conflict }}
+              </p>
+              {% endif %}
+
+              <!-- Flex container tombol -->
+              <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
+
+                {% if session['role'] != 'siswa' %}
+                <!-- Hanya tampil untuk non-siswa -->
+                <div class="d-flex align-items-start mt-2 gap-2 flex-wrap">
+                  <div>
+                    <!-- Tombol Lock/Unlock -->
+                    <button class="btn btn-sm btn-outline-dark" id="btnLockGlobal">
+                      {{ "🔒 Unlock Jadwal" if is_locked else "🔓 Lock Jadwal" }}
+                    </button>
+
+                    <!-- Status Global di bawah tombol Lock/Unlock -->
+                    <p class="text-sm mt-2 mb-0">Status Global:
+                      <span class="fw-bold text-primary" id="statusGlobal">
+                        {{ "TERKUNCI" if is_locked else "TERBUKA" }}
+                      </span>
+                    </p>
+                  </div>
+
+                  <!-- Dropdown Export di sebelah kanan tombol Lock/Unlock -->
+                  <div class="dropdown">
+                    <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="dropdownExport" data-bs-toggle="dropdown" aria-expanded="false">
+                      <i class="fas fa-file-export me-1"></i> Export
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownExport">
+                      <li><a class="dropdown-item text-success" href="/export">📥 Export Excel</a></li>
+                      <li><a class="dropdown-item text-danger" href="/pdf">📄 Export PDF</a></li>
+                    </ul>
+                  </div>
+                </div>
+                {% else %}
+                <!-- Tampilkan hanya tombol export untuk siswa -->
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="dropdownExport" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-file-export me-1"></i> Export
+                  </button>
+                  <ul class="dropdown-menu" aria-labelledby="dropdownExport">
+                    <li><a class="dropdown-item text-success" href="/export">📥 Export Excel</a></li>
+                    <li><a class="dropdown-item text-danger" href="/pdf">📄 Export PDF</a></li>
+                  </ul>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+
+
+            <div class="card-body px-0 pt-0 pb-2">
+              <div class="table-responsive p-3">
+                {% for kelas, hari_data in jadwal.items() %}
+                  <h6 class="ps-3 pb-2">Kelas: {{ kelas }}</h6>
+                  <table class="table align-items-center mb-5 table-bordered">
+                    <thead class="bg-light">
+                      <tr>
+                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Hari</th>
+                        {% for waktu in [
+                          "07.30–08.00", "08.00–08.30", "08.30–09.00", "09.00–09.30", "09.30–10.00", 
+                          "10.00–10.20", "10.20–10.50", "10.50–11.20", "11.20–11.50", 
+                          "11.50–12.20", "12.20–13.00"
+                        ] %}
+                          <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ waktu }}</th>
+                        {% endfor %}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for hari in ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"] %}
+                        <tr>
+                          <td class="text-xs font-weight-bold">{{ hari }}</td>
+                          {% for waktu in [
+                            "07.30–08.00", "08.00–08.30", "08.30–09.00", "09.00–09.30", "09.30–10.00", 
+                            "10.00–10.20", "10.20–10.50", "10.50–11.20", "11.20–11.50", 
+                            "11.50–12.20", "12.20–13.00"
+                          ] %}
+                            {% set content = hari_data.get(hari, {}).get(waktu, '-') %}
+                            <td class="text-sm text-center">{{ content }}</td>
+                          {% endfor %}
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- JS Toggle Lock -->
+  <script>
+    document.getElementById('btnLockGlobal').addEventListener('click', function () {
+      fetch('/toggle_global_lock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+        .then(res => res.json())
+        .then(data => {
+          const btn = document.getElementById('btnLockGlobal');
+          const statusText = document.getElementById('statusGlobal');
+          if (data.locked) {
+            btn.textContent = '🔒 Unlock Jadwal';
+            statusText.textContent = 'TERKUNCI';
+          } else {
+            btn.textContent = '🔓 Lock Jadwal';
+            statusText.textContent = 'TERBUKA';
+          }
+          location.reload();
+        });
+    });
+  </script>
+
+  <!-- Bootstrap Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Argon & Plugins -->
+  <script src="../assets/js/plugins/perfect-scrollbar.min.js"></script>
+  <script src="../assets/js/plugins/smooth-scrollbar.min.js"></script>
+  <script>
+    var win = navigator.platform.indexOf('Win') > -1;
+    if (win && document.querySelector('#sidenav-scrollbar')) {
+      Scrollbar.init(document.querySelector('#sidenav-scrollbar'), { damping: '0.5' });
+    }
+  </script>
+  <script async defer src="https://buttons.github.io/buttons.js"></script>
+  <script src="../assets/js/argon-dashboard.min.js?v=2.1.0"></script>
+</body>
+
+</html>
