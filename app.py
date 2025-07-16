@@ -5,6 +5,7 @@ from fpdf import FPDF
 import pandas as pd
 from functools import wraps
 from flask import abort
+import datetime
 import io
 import os
 
@@ -189,7 +190,7 @@ def jadwal():
 #                MANAGEMENT JADWAL
 #------------------------------------------------------
 
-@app.route('/management', methods=['GET','POST'])
+@app.route('/management', methods=['GET', 'POST'])
 def management_jadwal():
     if 'username' not in session:
         flash('Silakan login terlebih dahulu.', 'warning')
@@ -202,6 +203,7 @@ def management_jadwal():
         pref_raw = request.form.getlist('preferensi')
         preferensi = [[h, s] for h_s in pref_raw for h, s in [h_s.split('|')]]
 
+        # Update guru dan mapel
         guru_mapel_collection.update_one(
             {"mapel": mapel},
             {"$addToSet": {"guru": guru}},
@@ -216,8 +218,28 @@ def management_jadwal():
             }},
             upsert=True
         )
+
+        # Simpan preferensi sebagai locked slot (untuk semua kelas yang diajar)
+        if preferensi:
+            for kls in kelas_ajar:
+                locked_slots_collection.update_one(
+                    {
+                        "kelas": kls,
+                        "mapel": mapel,
+                        "guru": guru
+                    },
+                    {
+                        "$set": {
+                            "slots": [{"hari": h, "waktu": s} for h, s in preferensi],
+                            "updated_at": datetime.datetime.utcnow()
+                        }
+                    },
+                    upsert=True
+                )
+
         return redirect('/jadwal')
 
+    # === Ambil semua data yang dibutuhkan ===
     guru_mapel_data = {doc['mapel']: doc.get('guru', []) for doc in guru_mapel_collection.find()}
     preferensi_map = {doc['guru']: doc.get('preferensi', []) for doc in guru_collection.find()}
     guru_kelas_map = {doc['guru']: doc.get('kelas_ajar', []) for doc in guru_collection.find()}
@@ -226,6 +248,7 @@ def management_jadwal():
     status = status_collection.find_one({"key": "lock_status"})
     is_locked = status['locked'] if status else False
 
+    # === Jalankan GA atau ambil jadwal final ===
     if is_locked:
         jadwal_db = list(jadwal_final_collection.find({}, {"_id": 0}))
         jadwal = [(item['kelas'], item['hari'], item['waktu'], item['mapel'], item['guru']) for item in jadwal_db]
@@ -245,8 +268,10 @@ def management_jadwal():
                 for k, h, s, m, g in jadwal
             ])
 
+    # === Hitung nilai fitness ===
     fitness_info = evaluate_fitness(jadwal, preferensi_map)
 
+    # Format data jadwal ke bentuk dictionary agar mudah ditampilkan di tabel
     data = {}
     for kls, h, s, m, g in jadwal:
         data.setdefault(kls, {}).setdefault(h, {})[s] = f"{m} ({g})"
@@ -264,6 +289,7 @@ def management_jadwal():
                            semua_guru=semua_guru,
                            locked_slots=locked_slots,
                            title="Manajemen Jadwal")
+
 
 #------------------------------------------------------
 #                      FITUR PENGAMPU

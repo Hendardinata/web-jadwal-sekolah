@@ -1,32 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="id">
 <head>
   {% include 'header.html' %}
+  <style>
+    .jadwal-table th, .jadwal-table td {
+      font-size: 13px;
+      text-align: center;
+      vertical-align: middle;
+    }
+  </style>
 </head>
-
-<body class="g-sidenav-show   bg-gray-100">
+<body class="g-sidenav-show bg-gray-100">
   <div class="min-height-300 bg-dark position-absolute w-100"></div>
 
   {% include 'aside.html' %}
 
-  <main class="main-content position-relative border-radius-lg ">
-    <!-- Navbar -->
+  <main class="main-content position-relative border-radius-lg">
     {% include 'navbar.html' %}
-    <!-- End Navbar -->
+
     <div class="container-fluid py-4">
       <div class="row">
-        <div class="col-12">
-          <div class="card mb-4">
+        <div class="col-lg-6 mb-4">
+          <div class="card">
             <div class="card-header pb-0">
-              <h6>Management Jadwal</h6>
+              <h6>Input Jadwal Guru</h6>
             </div>
-            <div class="card-body px-4 pt-4 pb-2">
-              <form method="POST" class="form-section">
+            <div class="card-body">
+              <form method="POST">
                 <div class="mb-3">
-                  <label for="mapel" class="form-label fw-bold">Mata Pelajaran</label>
+                  <label class="form-label fw-bold">Mata Pelajaran</label>
                   <select name="mapel" class="form-select" required>
-                    <option value="" disabled selected>-- Pilih Mata Pelajaran --</option>
+                    <option value="">-- Pilih Mapel --</option>
                     {% for m in semua_mapel %}
                       <option value="{{ m.mapel }}">{{ m.mapel }}</option>
                     {% endfor %}
@@ -34,9 +38,9 @@
                 </div>
 
                 <div class="mb-3">
-                  <label for="guru" class="form-label fw-bold">Nama Guru</label>
+                  <label class="form-label fw-bold">Nama Guru</label>
                   <select name="guru" class="form-select" required>
-                    <option value="" disabled selected>-- Pilih Guru --</option>
+                    <option value="">-- Pilih Guru --</option>
                     {% for g in semua_guru %}
                       <option value="{{ g.guru }}">{{ g.guru }}</option>
                     {% endfor %}
@@ -44,14 +48,15 @@
                 </div>
 
                 <div class="mb-3">
-                  <label for="kelas_ajar" class="form-label fw-bold">Kelas yang Diajar</label>
-                  <select name="kelas_ajar" class="form-select" required>
-                    <option value="" disabled selected>-- Pilih Kelas --</option>
+                  <label class="form-label fw-bold">Kelas yang Diajar</label>
+                  <select name="kelas_ajar" class="form-select" multiple required>
                     {% for k in semua_kelas %}
                       <option value="{{ k.nama }}">{{ k.nama }}</option>
                     {% endfor %}
                   </select>
+                  <small class="text-muted">Tahan CTRL dan Klik kanan untuk memilih lebih dari satu.</small>
                 </div>
+
                 <div class="mb-3">
                   <label class="form-label fw-bold">Preferensi Waktu (Opsional)</label><br>
                   <button type="button" id="togglePrefBtn" class="btn btn-outline-secondary btn-sm mt-2">
@@ -63,9 +68,9 @@
                       <strong class="text-primary">{{ h }}</strong><br>
                       <div class="row mb-2">
                         {% for s in [
-                          "07.30–08.00", "08.00–08.30", "08.30–09.00", "09.00–09.30", "09.30–10.00", 
-                          "10.00–10.20", "10.20–10.50", "10.50–11.20", "11.20–11.50", 
-                          "11.50–12.20", "12.20–13.00"
+                          "07.30–08.00", "08.00–08.30", "08.30–09.00", "09.00–09.30",
+                          "09.30–10.00", "10.00–10.20", "10.20–10.50", "10.50–11.20",
+                          "11.20–11.50", "11.50–12.20", "12.20–13.00"
                         ] %}
                           <div class="col-md-4 col-sm-6">
                             <div class="form-check">
@@ -78,21 +83,68 @@
                     {% endfor %}
                   </div>
                 </div>
+
                 <div class="d-flex">
                   <button type="submit" class="btn bg-gradient-info me-2">
-                    <i class="fas fa-save me-1"></i>Tambah
+                    <i class="fas fa-save me-1"></i> Simpan
                   </button>
                   <a href="{{ url_for('dashboard') }}" class="btn bg-gradient-warning">
-                    <i class="fas fa-arrow-left me-1"></i>Kembali
+                    <i class="fas fa-arrow-left me-1"></i> Kembali
                   </a>
                 </div>
-            </form>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- === TABEL JADWAL FINAL === -->
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-header pb-0">
+              <h6>Jadwal Akhir</h6>
+              <small class="text-muted">Fitness: {{ fitness_info.score }} | Konflik: {{ fitness_info.conflict }}</small>
+            </div>
+            <div class="card-body px-0">
+              {% for kelas, hari_data in jadwal.items() %}
+                <h6 class="mt-0 ms-3 text-primary">{{ kelas }}</h6>
+                <div class="table-responsive px-3">
+                  <table class="table table-bordered jadwal-table">
+                    <thead class="bg-secondary text-white">
+                      <tr>
+                        <th>Hari</th>
+                        {% for s in [
+                          "07.30–08.00", "08.00–08.30", "08.30–09.00", "09.00–09.30",
+                          "09.30–10.00", "10.00–10.20", "10.20–10.50", "10.50–11.20",
+                          "11.20–11.50", "11.50–12.20", "12.20–13.00"
+                        ] %}
+                          <th>{{ s }}</th>
+                        {% endfor %}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for h in ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"] %}
+                        <tr>
+                          <td>{{ h }}</td>
+                          {% for s in [
+                            "07.30–08.00", "08.00–08.30", "08.30–09.00", "09.00–09.30",
+                            "09.30–10.00", "10.00–10.20", "10.20–10.50", "10.50–11.20",
+                            "11.20–11.50", "11.50–12.20", "12.20–13.00"
+                          ] %}
+                            <td>
+                              {{ hari_data[h][s] if hari_data.get(h) and hari_data[h].get(s) else '-' }}
+                            </td>
+                          {% endfor %}
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% endfor %}
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-  </div>
   </main>
 
   <script>
@@ -109,24 +161,17 @@
       }
     });
   </script>
-  <!--   Core JS Files   -->
+
+  <!-- Core JS -->
   <script src="../assets/js/core/popper.min.js"></script>
   <script src="../assets/js/core/bootstrap.min.js"></script>
   <script src="../assets/js/plugins/perfect-scrollbar.min.js"></script>
   <script src="../assets/js/plugins/smooth-scrollbar.min.js"></script>
   <script>
-    var win = navigator.platform.indexOf('Win') > -1;
-    if (win && document.querySelector('#sidenav-scrollbar')) {
-      var options = {
-        damping: '0.5'
-      }
-      Scrollbar.init(document.querySelector('#sidenav-scrollbar'), options);
+    if (navigator.platform.indexOf('Win') > -1 && document.querySelector('#sidenav-scrollbar')) {
+      Scrollbar.init(document.querySelector('#sidenav-scrollbar'), { damping: '0.5' });
     }
   </script>
-  <!-- Github buttons -->
-  <script async defer src="https://buttons.github.io/buttons.js"></script>
-  <!-- Control Center for Soft Dashboard: parallax effects, scripts for the example pages etc -->
   <script src="../assets/js/argon-dashboard.min.js?v=2.1.0"></script>
 </body>
-
 </html>

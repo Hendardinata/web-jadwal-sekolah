@@ -12,75 +12,73 @@ non_akademik = {
 }
 
 def run_ga(
-    guru_mapel,            # dict: mapel -> list guru
-    preferensi_map,        # dict: guru -> list [hari, slot]
-    guru_kelas_map,        # dict: guru -> list kelas
-    daftar_kelas,          # list: nama-nama kelas dari collection `kelas`
-    locked_slots=None,     # list dict {kelas, hari, waktu, mapel, guru}
+    guru_mapel,
+    preferensi_map,
+    guru_kelas_map,
+    daftar_kelas,
+    locked_slots=None,
     global_lock=False,
     jumlah_populasi=50,
     generasi_maks=200
 ):
-    
-    print("== MULAI PROSES GENETIC ALGORITHM ==")  # LOG
-    print(f"Jumlah populasi: {jumlah_populasi}, Generasi Maks: {generasi_maks}")  # LOG
-    print(f"Global Lock Aktif: {global_lock}")  # LOG
-    
+    print("== MULAI PROSES GENETIC ALGORITHM ==")
+    print(f"Jumlah populasi: {jumlah_populasi}, Generasi Maks: {generasi_maks}")
+    print(f"Global Lock Aktif: {global_lock}")
+
     mapel = list(guru_mapel.keys())
     jam_per_minggu = 2
 
-    # Siapkan lookup untuk slot terkunci
     locked_lookup = set()
     locked_map = {}
     if locked_slots:
         print(f"Jumlah slot terkunci: {len(locked_slots)}")
-        for slot in locked_slots:
-            key = (slot["kelas"], slot["hari"], slot["waktu"])
-            locked_lookup.add(key)
-            locked_map[key] = (slot["mapel"], slot["guru"])
+        for entry in locked_slots:
+            kls = entry["kelas"]
+            m = entry["mapel"]
+            g = entry["guru"]
+            for slot in entry["slots"]:
+                h = slot["hari"]
+                s = slot["waktu"]
+                key = (kls, h, s)
+                locked_lookup.add(key)
+                locked_map[key] = (m, g)
 
-    # Jika global lock aktif, langsung gunakan locked slots
     if global_lock and locked_slots:
         print("Global lock aktif. Mengembalikan slot terkunci...")
-        jadwal_locked = []
-        for slot in locked_slots:
-            jadwal_locked.append((
-                slot["kelas"], slot["hari"], slot["waktu"],
-                slot["mapel"], slot["guru"]
-            ))
-        return jadwal_locked
+        return [
+            (slot["kelas"], s["hari"], s["waktu"], slot["mapel"], slot["guru"])
+            for slot in locked_slots
+            for s in slot["slots"]
+        ]
 
     def generate_chromosome():
         jadwal = []
         for kls in daftar_kelas:
             for m in mapel:
-                for _ in range(jam_per_minggu):
-                    # Cek apakah slot locked untuk mapel ini pada kelas ini
-                    locked_for_this = [key for key in locked_lookup if key[0] == kls]
-                    found_locked = None
-                    for key in locked_for_this:
-                        mapel_locked, _ = locked_map[key]
-                        if mapel_locked == m:
-                            found_locked = key
+                count = 0
+                locked_for_this = [
+                    key for key in locked_lookup
+                    if key[0] == kls and locked_map[key][0] == m
+                ]
+                for key in locked_for_this:
+                    h, s = key[1], key[2]
+                    g = locked_map[key][1]
+                    jadwal.append((kls, h, s, m, g))
+                    count += 1
+                for _ in range(jam_per_minggu - count):
+                    kandidat_guru = [
+                        g for g in guru_mapel[m]
+                        if g in guru_kelas_map and kls in guru_kelas_map[g]
+                    ]
+                    if not kandidat_guru:
+                        continue
+                    g = random.choice(kandidat_guru)
+                    while True:
+                        h = random.choice(hari)
+                        s = random.choice(waktu_slot)
+                        if s not in non_akademik and (kls, h, s) not in locked_lookup:
                             break
-                    if found_locked:
-                        h, s = found_locked[1], found_locked[2]
-                        g = locked_map[found_locked][1]
-                        jadwal.append((kls, h, s, m, g))
-                    else:
-                        kandidat_guru = [
-                            g for g in guru_mapel[m]
-                            if g in guru_kelas_map and kls in guru_kelas_map[g]
-                        ]
-                        if not kandidat_guru:
-                            continue
-                        g = random.choice(kandidat_guru)
-                        while True:
-                            h = random.choice(hari)
-                            s = random.choice(waktu_slot)
-                            if s not in non_akademik and (kls, h, s) not in locked_lookup:
-                                break
-                        jadwal.append((kls, h, s, m, g))
+                    jadwal.append((kls, h, s, m, g))
         return jadwal
 
     def fitness(chromosome):
@@ -97,6 +95,8 @@ def run_ga(
             key_mapel_kls_slot = (kls, h, s, m)
             key_guru_kls_hari = (g, kls, h)
 
+            is_locked = (kls, h, s) in locked_lookup and locked_map[(kls, h, s)][1] == g
+
             if key_kls in slot_kelas:
                 konflik += 1
             if key_guru in slot_guru:
@@ -108,7 +108,7 @@ def run_ga(
 
             guru_kelas_hari.setdefault(key_guru_kls_hari, 0)
             guru_kelas_hari[key_guru_kls_hari] += 1
-            if guru_kelas_hari[key_guru_kls_hari] > 1:
+            if guru_kelas_hari[key_guru_kls_hari] > 1 and not is_locked:
                 konflik += 3
 
             jam_guru_per_hari.setdefault((g, h), 0)
@@ -136,9 +136,9 @@ def run_ga(
     def mutate(chromosome, mutation_rate=0.1):
         for i in range(len(chromosome)):
             if random.random() < mutation_rate:
-                kls, _, _, m, old_guru = chromosome[i]
-                key_slot = (kls, chromosome[i][1], chromosome[i][2])
-                if locked_lookup and key_slot in locked_lookup:
+                kls, h_old, s_old, m, g_old = chromosome[i]
+                key_slot = (kls, h_old, s_old)
+                if key_slot in locked_lookup and locked_map[key_slot][1] == g_old:
                     continue
                 kandidat_guru = [
                     g for g in guru_mapel[m]
@@ -154,10 +154,10 @@ def run_ga(
                         break
                 chromosome[i] = (kls, h, s, m, g)
         return chromosome
-    print("Membuat populasi awal...") 
-    
+
+    print("Membuat populasi awal...")
     populasi = [generate_chromosome() for _ in range(jumlah_populasi)]
-    for _ in range(generasi_maks):
+    for gen in range(generasi_maks):
         selected = selection(populasi)
         new_population = []
         for _ in range(jumlah_populasi // 2):
@@ -166,7 +166,13 @@ def run_ga(
             new_population.append(mutate(child2))
         populasi = new_population
 
-    return max(populasi, key=lambda x: fitness(x))
+        if gen % 10 == 0 or gen == generasi_maks - 1:
+            skor = round(fitness(selected[0]), 4)
+            print(f"Generasi {gen + 1}/{generasi_maks} - Fitness terbaik: {skor}")
+
+    best = max(populasi, key=lambda x: fitness(x))
+    print("== SELESAI GA. Fitness Terbaik:", round(fitness(best), 4))
+    return best
 
 
 def evaluate_fitness(jadwal, preferensi_map):
