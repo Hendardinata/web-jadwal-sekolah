@@ -57,28 +57,34 @@
       {% if role != 'guru' and role != 'siswa' %}
         <!-- HANYA UNTUK ADMIN / SUPERUSER (BUKAN GURU ATAU SISWA) -->
         <li class="nav-item">
-          <a class="nav-link {% if current_path.startswith('/kelas') %}active bg-gradient-primary text-white{% endif %}" href="{{ url_for('tambah_kelas') }}">
-            <div class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
-              <i class="ni ni-building text-dark text-sm opacity-10"></i>
-            </div>
-            <span class="nav-link-text ms-1">Kelas</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if current_path.startswith('/mapel') %}active bg-gradient-primary text-white{% endif %}" href="{{ url_for('tambah_mapel') }}">
-            <div class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
-              <i class="ni ni-books text-dark text-sm opacity-10"></i>
-            </div>
-            <span class="nav-link-text ms-1">Mata Pelajaran</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if current_path.startswith('/guru') %}active bg-gradient-primary text-white{% endif %}" href="{{ url_for('tambah_guru') }}">
+          <a class="nav-link dropdown-toggle d-flex align-items-center {% if current_path.startswith('/kelas') or current_path.startswith('/mapel') or current_path.startswith('/guru') %}active bg-gradient-primary text-white{% endif %}" data-bs-toggle="collapse" href="#akademikMenu" role="button" aria-expanded="false" aria-controls="akademikMenu">
             <div class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
               <i class="ni ni-hat-3 text-dark text-sm opacity-10"></i>
             </div>
-            <span class="nav-link-text ms-1">Guru</span>
+            <span class="nav-link-text ms-1">Manajemen Akademik</span>
           </a>
+          <div class="collapse {% if current_path.startswith('/kelas') or current_path.startswith('/mapel') or current_path.startswith('/guru') %}show{% endif %}" id="akademikMenu">
+            <ul class="nav flex-column">
+              <li class="nav-item">
+                <a class="nav-link d-flex align-items-center ps-5 {% if current_path.startswith('/kelas') %}active text-primary fw-bold{% endif %}" href="{{ url_for('tambah_kelas') }}">
+                  <i class="ni ni-building me-2 text-xs text-dark opacity-7"></i>
+                  <span>Kelas</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link d-flex align-items-center ps-5 {% if current_path.startswith('/mapel') %}active text-primary fw-bold{% endif %}" href="{{ url_for('tambah_mapel') }}">
+                  <i class="ni ni-collection me-2 text-xs text-dark opacity-7"></i>
+                  <span>Mata Pelajaran</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link d-flex align-items-center ps-5 {% if current_path.startswith('/guru') %}active text-primary fw-bold{% endif %}" href="{{ url_for('tambah_guru') }}">
+                  <i class="ni ni-single-02 me-2 text-xs text-dark opacity-7"></i>
+                  <span>Guru</span>
+                </a>
+              </li>
+            </ul>
+          </div>
         </li>
       {% endif %}
 

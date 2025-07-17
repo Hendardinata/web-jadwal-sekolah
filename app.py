@@ -200,6 +200,9 @@ def management_jadwal():
         mapel = request.form['mapel']
         guru = request.form['guru']
         kelas_ajar = request.form.getlist('kelas_ajar')
+        jumlah_jam = int(request.form.get('jumlah_jam', 2))  # ✅ Ambil jumlah jam dari form
+        is_berurutan = 'berurutan' in request.form and jumlah_jam > 1  # ✅ Aktif hanya jika jam > 1
+
         pref_raw = request.form.getlist('preferensi')
         preferensi = [[h, s] for h_s in pref_raw for h, s in [h_s.split('|')]]
 
@@ -210,32 +213,40 @@ def management_jadwal():
             upsert=True
         )
 
+        # Tambahkan kelas_ajar baru ke daftar lama tanpa duplikat
+        existing_guru = guru_collection.find_one({"guru": guru}) or {}
+        existing_kelas_ajar = set(existing_guru.get("kelas_ajar", []))
+        updated_kelas_ajar = list(existing_kelas_ajar.union(set(kelas_ajar)))
+
+        # Simpan data guru
         guru_collection.update_one(
             {"guru": guru},
             {"$set": {
-                "kelas_ajar": kelas_ajar,
-                "preferensi": preferensi
+                "kelas_ajar": updated_kelas_ajar,
+                "preferensi": preferensi if not is_berurutan else [],
+                "berurutan": is_berurutan  # ✅ Simpan status berurutan
             }},
             upsert=True
         )
 
-        # Simpan preferensi sebagai locked slot (untuk semua kelas yang diajar)
-        if preferensi:
-            for kls in kelas_ajar:
-                locked_slots_collection.update_one(
-                    {
-                        "kelas": kls,
-                        "mapel": mapel,
-                        "guru": guru
-                    },
-                    {
-                        "$set": {
-                            "slots": [{"hari": h, "waktu": s} for h, s in preferensi],
-                            "updated_at": datetime.datetime.utcnow()
-                        }
-                    },
-                    upsert=True
-                )
+        # Simpan locked slots
+        for kls in kelas_ajar:
+            slot_data = {
+                "jumlah_jam": jumlah_jam,
+                "berurutan": is_berurutan,
+                "updated_at": datetime.datetime.utcnow(),
+                "slots": [] if is_berurutan else [{"hari": h, "waktu": s} for h, s in preferensi]
+            }
+
+            locked_slots_collection.update_one(
+                {
+                    "kelas": kls,
+                    "mapel": mapel,
+                    "guru": guru
+                },
+                {"$set": slot_data},
+                upsert=True
+            )
 
         return redirect('/jadwal')
 
@@ -289,6 +300,7 @@ def management_jadwal():
                            semua_guru=semua_guru,
                            locked_slots=locked_slots,
                            title="Manajemen Jadwal")
+
 
 
 #------------------------------------------------------
