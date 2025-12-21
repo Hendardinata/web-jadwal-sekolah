@@ -7,6 +7,7 @@ from functools import wraps
 from flask import abort
 import datetime
 import io
+from bson import ObjectId
 import os
 
 app = Flask(__name__)
@@ -169,12 +170,41 @@ def jadwal():
     fitness_info = evaluate_fitness(jadwal, preferensi_map)
 
     data = {}
-    for kls, h, s, m, g in jadwal:
-        data.setdefault(kls, {}).setdefault(h, {})[s] = f"{m} ({g})"
+    for doc in jadwal_final_collection.find():
+        kls = doc['kelas']
+        hari = doc['hari']
+        waktu = doc['waktu']
+
+        data.setdefault(kls, {}).setdefault(hari, {})[waktu] = {
+            "text": f"{doc['mapel']} ({doc['guru']})",
+            "id": str(doc['_id'])
+        }
+
 
     semua_kelas = list(kelas_collection.find({}, {'_id': 0, 'nama': 1}))
     semua_mapel = list(guru_mapel_collection.find({}, {'_id': 0, 'mapel': 1}))
     semua_guru = list(guru_collection.find({}, {'_id': 0, 'guru': 1}))
+
+    # Kode Baru
+    search = request.args.get('search', '').strip().lower()
+
+    if search:
+        filtered_data = {}
+
+        for kelas, hari_data in data.items():
+            # search by nama kelas
+            if search in kelas.lower():
+                filtered_data[kelas] = hari_data
+                continue
+
+            # search by isi cell (mapel / guru)
+            for hari, waktu_data in hari_data.items():
+                for waktu, cell in waktu_data.items():
+                    if search in cell["text"].lower():
+                        filtered_data.setdefault(kelas, {}).setdefault(hari, {})[waktu] = cell
+
+        data = filtered_data
+
 
     return render_template("index.html",
                            jadwal=data,
@@ -184,6 +214,7 @@ def jadwal():
                            semua_mapel=semua_mapel,
                            semua_guru=semua_guru,
                            locked_slots=locked_slots,
+                           search=search or '',
                            title="Jadwal")
 
 #------------------------------------------------------
@@ -200,8 +231,8 @@ def management_jadwal():
         mapel = request.form['mapel']
         guru = request.form['guru']
         kelas_ajar = request.form.getlist('kelas_ajar')
-        jumlah_jam = int(request.form.get('jumlah_jam', 2))  # ✅ Ambil jumlah jam dari form
-        is_berurutan = 'berurutan' in request.form and jumlah_jam > 1  # ✅ Aktif hanya jika jam > 1
+        jumlah_jam = int(request.form.get('jumlah_jam', 2))
+        is_berurutan = 'berurutan' in request.form and jumlah_jam > 1
 
         pref_raw = request.form.getlist('preferensi')
         preferensi = [[h, s] for h_s in pref_raw for h, s in [h_s.split('|')]]
@@ -224,7 +255,7 @@ def management_jadwal():
             {"$set": {
                 "kelas_ajar": updated_kelas_ajar,
                 "preferensi": preferensi if not is_berurutan else [],
-                "berurutan": is_berurutan  # ✅ Simpan status berurutan
+                "berurutan": is_berurutan
             }},
             upsert=True
         )
@@ -282,7 +313,7 @@ def management_jadwal():
     # === Hitung nilai fitness ===
     fitness_info = evaluate_fitness(jadwal, preferensi_map)
 
-    # Format data jadwal ke bentuk dictionary agar mudah ditampilkan di tabel
+    # === Format data jadwal ke bentuk dictionary agar mudah ditampilkan di tabel ===
     data = {}
     for kls, h, s, m, g in jadwal:
         data.setdefault(kls, {}).setdefault(h, {})[s] = f"{m} ({g})"
@@ -301,7 +332,153 @@ def management_jadwal():
                            locked_slots=locked_slots,
                            title="Manajemen Jadwal")
 
+@app.route('/management-edit/<id>', methods=['GET', 'POST'])
+def edit_jadwal(id):
+    # =========================================================
+    #                   AMBIL DATA JADWAL
+    # =========================================================
+    jadwal_doc = jadwal_final_collection.find_one({"_id": ObjectId(id)})
+    if not jadwal_doc:
+        flash("Jadwal tidak ditemukan", "danger")
+        return redirect(url_for('jadwal'))
 
+    guru_lama = jadwal_doc["guru"]
+    mapel_lama = jadwal_doc["mapel"]
+    kelas_lama = jadwal_doc["kelas"]
+
+    guru_doc = guru_collection.find_one({"guru": guru_lama}) or {}
+
+    locked_doc = locked_slots_collection.find_one({
+        "guru": guru_lama,
+        "mapel": mapel_lama,
+        "kelas": kelas_lama
+    }) or {}
+
+    # =========================================================
+    #                       GET Data
+    # =========================================================
+    slots_lama = locked_doc.get("slots", [])
+
+    jadwal = {
+        "guru": guru_lama,
+        "mapel": mapel_lama,
+        "kelas_ajar": guru_doc.get("kelas_ajar", []),
+
+        "preferensi": [
+            f"{slot['hari']}|{slot['waktu']}"
+            for slot in slots_lama
+        ],
+
+        "berurutan": locked_doc.get("berurutan", False),
+
+        "jumlah_jam": locked_doc.get("jumlah_jam", 1)
+    }
+
+    semua_kelas = list(kelas_collection.find({}, {"_id": 0, "nama": 1}))
+    semua_mapel = list(guru_mapel_collection.find({}, {"_id": 0, "mapel": 1}))
+    semua_guru = list(guru_collection.find({}, {"_id": 0, "guru": 1}))
+
+    # =========================================================
+    #                        POST Data
+    # =========================================================
+    if request.method == 'POST':
+        guru_baru = request.form['guru']
+        mapel_baru = request.form['mapel']
+        kelas_ajar_baru = request.form.getlist('kelas_ajar')
+
+        jumlah_jam_baru = int(request.form.get('jumlah_jam', 1))
+        berurutan_baru = 'berurutan' in request.form
+
+        preferensi_raw = request.form.getlist('preferensi')
+
+        # =====================================================
+        #                   LOGIKA PREFERENSI
+        # =====================================================
+        slots_baru = []
+
+        if preferensi_raw:
+            slots_baru = [
+                {"hari": h, "waktu": s}
+                for h, s in (p.split("|") for p in preferensi_raw)
+            ]
+
+        # =====================================================
+        #                   UPDATE guru mapel
+        # =====================================================
+        guru_mapel_collection.update_one(
+            {"mapel": mapel_lama},
+            {"$pull": {"guru": guru_lama}}
+        )
+
+        guru_mapel_collection.update_one(
+            {"mapel": mapel_baru},
+            {"$addToSet": {"guru": guru_baru}},
+            upsert=True
+        )
+
+        # =====================================================
+        #                    UPDATE guru
+        # =====================================================
+        guru_collection.update_one(
+            {"guru": guru_baru},
+            {"$set": {
+                "kelas_ajar": list(set(kelas_ajar_baru)),
+                "preferensi": slots_baru,
+                "berurutan": berurutan_baru
+            }},
+            upsert=True
+        )
+
+        # =====================================================
+        #                   UPDATE locked slots
+        # =====================================================
+        for kls in kelas_ajar_baru:
+            locked_slots_collection.update_one(
+                {
+                    "guru": guru_baru,
+                    "mapel": mapel_baru,
+                    "kelas": kls
+                },
+                {"$set": {
+                    "jumlah_jam": jumlah_jam_baru,  
+                    "slots": slots_baru,            
+                    "berurutan": berurutan_baru,
+                    "updated_at": datetime.datetime.utcnow()
+                }},
+                upsert=True
+            )
+
+        # =====================================================
+        #                   SYNC jadwal final
+        # =====================================================
+        jadwal_final_collection.delete_many({
+            "guru": guru_lama,
+            "mapel": mapel_lama,
+            "kelas": {"$in": kelas_ajar_baru}
+        })
+
+        if slots_baru:
+            for kls in kelas_ajar_baru:
+                for slot in slots_baru:
+                    jadwal_final_collection.insert_one({
+                        "guru": guru_baru,
+                        "mapel": mapel_baru,
+                        "kelas": kls,
+                        "hari": slot["hari"],
+                        "waktu": slot["waktu"],
+                        "updated_at": datetime.datetime.utcnow()
+                    })
+
+        flash("Jadwal berhasil diperbarui", "success")
+        return redirect(url_for('jadwal'))
+
+    return render_template(
+        "management_edit.html",
+        jadwal=jadwal,
+        semua_kelas=semua_kelas,
+        semua_mapel=semua_mapel,
+        semua_guru=semua_guru
+    )
 
 #------------------------------------------------------
 #                      FITUR PENGAMPU
@@ -309,14 +486,32 @@ def management_jadwal():
 
 @app.route('/pengampu', methods=['GET'])
 def daftar_pengampu():
-    mapel_filter = request.args.get('mapel')
+    if 'username' not in session:
+        flash('Silakan login terlebih dahulu.', 'warning')
+        return redirect(url_for('login'))
 
+    mapel_filter = request.args.get('mapel', '').strip()
+
+    query = {}
     if mapel_filter:
-        data = list(guru_mapel_collection.find({"mapel": {"$regex": mapel_filter, "$options": "i"}}))
-    else:
-        data = list(guru_mapel_collection.find())
+        query["mapel"] = {"$regex": mapel_filter, "$options": "i"}
 
-    return render_template('pengampu.html', data=data, mapel_filter=mapel_filter or '')
+    cursor = guru_mapel_collection.find(query, {"_id": 0})
+
+    data = []
+    for d in cursor:
+        data.append({
+            "mapel": d.get("mapel"),
+            "guru": d.get("guru", [])
+        })
+
+    return render_template(
+        'pengampu.html',
+        data=data,
+        mapel_filter=mapel_filter,
+        title="Data Guru Pengampu"
+    )
+
 
 #------------------------------------------------------
 # CREATE DAN READ FITUR KELAS, MATA PELAJARAN DAN GURU

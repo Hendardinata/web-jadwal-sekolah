@@ -1,39 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  {% include 'header.html' %}
-  {% include 'headKMG.html' %}
-  <style>
-    table td, table th {
-      text-align: center;
-      vertical-align: middle;
-    }
-  </style>
+  {% include 'style/header.html' %}
+  {% include 'style/headKMG.html' %}
 </head>
 
 <body class="g-sidenav-show bg-gray-100">
   <div class="min-height-300 bg-dark position-absolute w-100"></div>
 
-  {% include 'aside.html' %}
+  {% include 'style/aside.html' %}
 
   <main class="main-content position-relative border-radius-lg">
-    {% include 'navbar.html' %}
+    
+    {% include 'style/navbar.html' %}
 
     <div class="container-fluid py-4">
       <div class="row">
         <div class="col-12">
 
-          <!-- CARD: Tambah Guru -->
+          <!-- CARD: TAMBAH GURU -->
           <div class="card mb-4">
             <div class="card-header pb-0">
               <h6>Tambah Guru Baru</h6>
             </div>
+
             <div class="card-body px-4 pt-4 pb-2">
               <form method="POST">
                 <div class="mb-3">
-                  <label for="guru" class="form-label">Nama Guru</label>
-                  <input type="text" class="form-control" name="guru" id="guru" placeholder="Nama Guru" required>
+                  <label class="form-label">Nama Guru</label>
+                  <input type="text" class="form-control"
+                         name="guru" placeholder="Contoh: Budi Santoso" required>
                 </div>
+
                 <div class="d-flex">
                   <button type="submit" class="btn bg-gradient-info me-2">
                     <i class="fas fa-save me-1"></i>Tambah
@@ -46,37 +44,36 @@
             </div>
           </div>
 
-          <!-- CARD: Daftar Guru -->
+          <!-- CARD: DAFTAR GURU -->
           <div class="card">
             <div class="card-header pb-0">
               <h6 class="text-uppercase text-sm mb-0">Daftar Guru Saat Ini</h6>
             </div>
-            <div class="card-body px-0 pt-0 pb-2">
+
+            <div class="card-body pt-0">
+              <!-- DATA JSON -->
               <div id="guru-data" data-json='{{ daftar_guru | tojson | safe }}'></div>
 
-              <div class="table-responsive p-3">
-                <table class="table table-bordered align-items-center mb-0">
-                  <thead class="bg-light">
+              <div class="table-responsive">
+                <table class="table table-borderless modern-table align-middle mb-0">
+                  <thead>
                     <tr>
-                      <th style="width: 50px;" class="text-xs font-weight-bolder opacity-8 text-center">No</th>
-                      <th class="text-xs font-weight-bolder opacity-8 text-center">Nama Guru</th>
-                      <th style="width: 20%;" class="text-xs font-weight-bolder opacity-8 text-center">Action</th>
+                      <th style="width: 60px;">No</th>
+                      <th>Nama Guru</th>
+                      <th style="width: 220px;">Action</th>
                     </tr>
                   </thead>
+
                   <tbody id="guru-table-body">
-                    <!-- Diisi oleh jQuery -->
+                    <!-- Diisi oleh JS -->
                   </tbody>
                 </table>
               </div>
 
-              <div class="d-flex justify-content-end px-3 mt-3">
-                <nav>
-                  <ul class="pagination" id="pagination">
-                    <!-- Pagination di-generate di JS -->
-                  </ul>
-                </nav>
-              </div>
-
+              <!-- PAGINATION -->
+              <nav class="mt-4">
+                <ul class="pagination justify-content-end" id="pagination"></ul>
+              </nav>
             </div>
           </div>
 
@@ -85,7 +82,7 @@
     </div>
   </main>
 
-  <!-- Core JS & Pagination -->
+  <!-- CORE JS (TIDAK DIUBAH) -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script>
     let guruData = [];
@@ -100,32 +97,33 @@
       const slicedData = guruData.slice(start, start + rowsPerPage);
 
       if (slicedData.length === 0) {
-        tbody.append('<tr><td colspan="3" class="text-center text-muted text-sm">Belum ada data guru.</td></tr>');
+        tbody.append('<tr><td colspan="3" class="text-center text-muted py-4">Belum ada data guru.</td></tr>');
         return;
       }
 
       slicedData.forEach((g, i) => {
         const no = start + i + 1;
-        const row = `
+        tbody.append(`
           <tr>
-            <td class="text-sm">${no}</td>
-            <td class="text-sm">${g.guru}</td>
+            <td>${no}</td>
+            <td class="fw-semibold">${g.guru}</td>
             <td>
-              <div class="d-flex gap-2 justify-content-center">
-                <a href="/guru_edit/${encodeURIComponent(g.guru)}" class="btn btn-sm btn-warning">
+              <div class="d-flex justify-content-center gap-2">
+                <a href="/guru_edit/${encodeURIComponent(g.guru)}"
+                   class="btn btn-sm btn-warning">
                   <i class="fas fa-edit me-1"></i>Edit
                 </a>
-                <form method="POST" action="/guru/hapus" onsubmit="return confirm('Yakin ingin menghapus guru ini?')">
+                <form method="POST" action="/guru/hapus"
+                      onsubmit="return confirm('Yakin ingin menghapus guru ini?')">
                   <input type="hidden" name="guru" value="${g.guru}">
-                  <button type="submit" class="btn btn-sm btn-danger">
+                  <button class="btn btn-sm btn-danger">
                     <i class="fas fa-trash me-1"></i>Hapus
                   </button>
                 </form>
               </div>
             </td>
           </tr>
-        `;
-        tbody.append(row);
+        `);
       });
 
       renderPagination();
@@ -144,31 +142,21 @@
         `);
       }
 
-      setupPaginationEvents();
-    }
-
-    function setupPaginationEvents() {
-      $('.page-num').on('click', function (e) {
+      $('.page-num').click(function (e) {
         e.preventDefault();
-        const selectedPage = parseInt($(this).text());
-        currentPage = selectedPage;
+        currentPage = parseInt($(this).text());
         renderTable();
       });
     }
 
     $(document).ready(function () {
-      const jsonString = $('#guru-data').data('json');
-      guruData = jsonString;
+      guruData = $('#guru-data').data('json');
       renderTable();
     });
   </script>
 
-  <!-- Argon Dashboard Scripts -->
-  <script src="../assets/js/core/popper.min.js"></script>
+  <!-- ARGON -->
   <script src="../assets/js/core/bootstrap.min.js"></script>
-  <script src="../assets/js/plugins/perfect-scrollbar.min.js"></script>
-  <script src="../assets/js/plugins/smooth-scrollbar.min.js"></script>
-  <script async defer src="https://buttons.github.io/buttons.js"></script>
   <script src="../assets/js/argon-dashboard.min.js?v=2.0.4"></script>
 </body>
 </html>

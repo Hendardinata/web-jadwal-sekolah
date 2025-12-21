@@ -2,35 +2,20 @@
 <html lang="en">
 
 <head>
-  {% include 'header.html' %}
-  <style>
-    table.table-bordered {
-      border-collapse: collapse !important;
-    }
+  {% include 'style/header.html' %}
+  {% include 'style/headIndex.html' %}
 
-    table.table-bordered th,
-    table.table-bordered td {
-      border: 1px solid #dee2e6 !important;
-    }
-
-    .table tbody tr {
-      background-color: #ffffff !important;
-    }
-  </style>
-
-  <!-- Font Awesome untuk ikon -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 
 <body class="g-sidenav-show bg-gray-100">
   <div class="min-height-300 bg-dark position-absolute w-100"></div>
 
-  {% include 'aside.html' %}
+  {% include 'style/aside.html' %}
 
   <main class="main-content position-relative border-radius-lg ">
-    <!-- Navbar -->
-    {% include 'navbar.html' %}
-    <!-- End Navbar -->
+    
+    {% include 'style/navbar.html' %}
 
     <div class="container-fluid py-4">
       <div class="row">
@@ -46,7 +31,6 @@
               </p>
               {% endif %}
 
-              <!-- Flex container tombol -->
               <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
 
                 {% if session['role'] != 'siswa' %}
@@ -66,35 +50,69 @@
                     </p>
                   </div>
 
-                  <!-- Dropdown Export di sebelah kanan tombol Lock/Unlock -->
+                  <!-- Dropdown Export -->
                   <div class="dropdown">
                     <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="dropdownExport" data-bs-toggle="dropdown" aria-expanded="false">
                       <i class="fas fa-file-export me-1"></i> Export
                     </button>
                     <ul class="dropdown-menu" aria-labelledby="dropdownExport">
-                      <li><a class="dropdown-item text-success" href="/export">📥 Export Excel</a></li>
-                      <li><a class="dropdown-item text-danger" href="/pdf">📄 Export PDF</a></li>
+                      <li>
+                        <a class="dropdown-item text-success" href="/export">
+                          <i class="fas fa-file-excel me-2"></i> Export Excel
+                        </a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item text-danger" href="/pdf">
+                          <i class="fas fa-file-pdf me-2"></i> Export PDF
+                        </a>
+                      </li>
                     </ul>
+                  </div>
+
+                  <div>
+                    <form method="get" action="{{ url_for('jadwal') }}" class="row g-2">
+                      <div class="col-md-8">
+                        <input type="text"
+                              name="search"
+                              class="form-control"
+                              placeholder="Contoh: Nama/Kelas"
+                              value="{{ search }}">
+                      </div>
+                      <div class="col-md-auto">
+                        <button type="submit" class="btn btn-primary">
+                          <i class="fas fa-search me-1"></i> Cari
+                        </button>
+                      </div>
+                    </form>
+
                   </div>
                 </div>
                 {% else %}
-                <!-- Tampilkan hanya tombol export untuk siswa -->
+
+                <!-- Tampilan untuk siswa -->
                 <div class="dropdown">
                   <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="dropdownExport" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fas fa-file-export me-1"></i> Export
                   </button>
                   <ul class="dropdown-menu" aria-labelledby="dropdownExport">
-                    <li><a class="dropdown-item text-success" href="/export">📥 Export Excel</a></li>
-                    <li><a class="dropdown-item text-danger" href="/pdf">📄 Export PDF</a></li>
+                    <li>
+                      <a class="dropdown-item text-success" href="/export">
+                        <i class="fas fa-file-excel me-2"></i> Export Excel
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item text-danger" href="/pdf">
+                        <i class="fas fa-file-pdf me-2"></i> Export PDF
+                      </a>
+                    </li>
                   </ul>
                 </div>
                 {% endif %}
               </div>
             </div>
 
-
             <div class="card-body px-0 pt-0 pb-2">
-              <div class="table-responsive p-3">
+              <div class="table-responsive p-3 pdf-area" id="jadwalArea">
                 {% for kelas, hari_data in jadwal.items() %}
                   <h6 class="ps-3 pb-2">Kelas: {{ kelas }}</h6>
                   <table class="table align-items-center mb-5 table-bordered">
@@ -119,8 +137,17 @@
                             "10.00–10.20", "10.20–10.50", "10.50–11.20", "11.20–11.50", 
                             "11.50–12.20", "12.20–13.00"
                           ] %}
-                            {% set content = hari_data.get(hari, {}).get(waktu, '-') %}
-                            <td class="text-sm text-center">{{ content }}</td>
+
+                            {% set cell = hari_data.get(hari, {}).get(waktu) %}
+
+                            <td class="editable-cell text-center"
+                                {% if cell %}
+                                  data-id="{{ cell.id }}"
+                                  data-editable="true"
+                                {% endif %}
+                            >
+                              {{ cell.text if cell else '-' }}
+                            </td>
                           {% endfor %}
                         </tr>
                       {% endfor %}
@@ -133,7 +160,26 @@
         </div>
       </div>
     </div>
+
+<div class="dropdown d-none" id="contextDropdown"
+     style="position: fixed; z-index: 9999;">
+  <ul class="dropdown-menu show shadow">
+    <li>
+      <button class="dropdown-item fw-semibold" id="editCell">
+        <i class="fas fa-pen me-2"></i>Edit Jadwal
+      </button>
+    </li>
+  </ul>
+</div>
+
+
   </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+        integrity="sha512-YcsIPGdhPK4P4S4L1j+z2kFhGk6c+gVbJAnYXhYzu3n6PvJEa3TBUnIFJQGryuVKyXjH9MuNoMNFc13JUO2cSw=="
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+
 
   <!-- JS Toggle Lock -->
   <script>
@@ -157,6 +203,52 @@
         });
     });
   </script>
+
+<script>
+const menu = document.getElementById('contextDropdown');
+const editBtn = document.getElementById('editCell');
+let selectedId = null;
+let activeCell = null;
+
+document.addEventListener('contextmenu', function (e) {
+  const cell = e.target.closest('.editable-cell');
+
+  if (!cell || cell.dataset.editable !== "true") return;
+
+  e.preventDefault();
+
+  // Hapus active sebelumnya
+  document.querySelectorAll('.active-cell')
+    .forEach(td => td.classList.remove('active-cell'));
+
+  // Set active baru
+  cell.classList.add('active-cell');
+  activeCell = cell;
+
+  selectedId = cell.dataset.id;
+  if (!selectedId) return;
+
+  menu.style.top = `${e.clientY}px`;
+  menu.style.left = `${e.clientX}px`;
+  menu.classList.remove('d-none');
+});
+
+// Klik di luar → hilangkan active
+document.addEventListener('click', () => {
+  menu.classList.add('d-none');
+
+  if (activeCell) {
+    activeCell.classList.remove('active-cell');
+    activeCell = null;
+  }
+});
+
+editBtn.addEventListener('click', () => {
+  if (!selectedId) return;
+  window.location.href = `/management-edit/${selectedId}`;
+});
+</script>
+
 
   <!-- Bootstrap Bundle with Popper -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
