@@ -1,0 +1,61 @@
+<style>
+    #jadwal-calendar {
+        background-color: white;
+        border-radius: 12px;
+        padding: 10px;
+        min-height: 600px;
+    }
+
+    #simple-calendar {
+    font-family: 'Segoe UI', sans-serif;
+    width: 100%;
+    padding: 10px;
+    }
+
+    #simple-calendar table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    }
+
+    #simple-calendar th {
+    background-color: #f8f9fa;
+    color: #5e72e4;
+    font-weight: bold;
+    padding: 12px;
+    border: 1px solid #dee2e6;
+    }
+
+    #simple-calendar td {
+    padding: 14px 0;
+    text-align: center;
+    border: 1px solid #eaeaea;
+    vertical-align: middle;
+    font-size: 14px;
+    color: #344767;
+    background-color: #fff;
+    transition: background-color 0.2s ease;
+    }
+
+    #simple-calendar td:hover {
+    background-color: #f0f4ff;
+    }
+
+    #simple-calendar .today {
+    background-color: #5e72e4;
+    color: white;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: inline-block;
+    line-height: 36px;
+    }
+
+    @media screen and (max-width: 768px) {
+    #simple-calendar td, #simple-calendar th {
+        padding: 10px 4px;
+        font-size: 12px;
+    }
+    }
+</style>

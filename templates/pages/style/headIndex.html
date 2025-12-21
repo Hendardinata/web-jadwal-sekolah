@@ -1,0 +1,75 @@
+  <style>
+    table.table-bordered {
+      border-collapse: collapse !important;
+    }
+
+    table.table-bordered th,
+    table.table-bordered td {
+      border: 1px solid #dee2e6 !important;
+    }
+
+    .table tbody tr {
+      background-color: #ffffff !important;
+    }
+
+/* Opsional: klik terasa interaktif */
+.editable-cell[data-editable="true"]:active {
+  background-color: #dee2e6;
+}
+
+/* Hover */
+.editable-cell[data-editable="true"]:hover {
+  background-color: #e9ecef;
+  box-shadow: inset 0 0 0 1px #0d6efd;
+  cursor: pointer;
+}
+
+/* Mode aktif (setelah klik kanan) */
+.editable-cell.active-cell {
+  background-color: #dbeafe !important; /* biru lembut */
+  box-shadow: inset 0 0 0 2px #0d6efd;
+}
+
+/* ===== STYLE KHUSUS PDF ===== */
+.pdf-area h6 {
+  margin-top: 20px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.pdf-area table {
+  width: 100%;
+  border-collapse: collapse !important;
+  font-size: 10px;
+}
+
+.pdf-area th,
+.pdf-area td {
+  border: 1px solid #000 !important;
+  padding: 10px !important;
+  vertical-align: middle;
+}
+
+.pdf-area th {
+  background-color: #f0f0f0 !important;
+  color: #000 !important;
+  font-weight: bold;
+}
+
+.pdf-area td {
+  background-color: #ffffff !important;
+}
+
+/* Hindari tabel terpotong */
+.pdf-area table {
+  page-break-inside: avoid;
+}
+
+.pdf-area h6 {
+  page-break-before: always;
+}
+
+.pdf-area h6:first-of-type {
+  page-break-before: auto;
+}
+</style>

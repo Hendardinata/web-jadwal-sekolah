@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  {% include 'style/header.html' %}
+  <style>
+    .form-label {
+      font-weight: 600;
+      color: #344767;
+    }
+  </style>
+</head>
+
+<body class="g-sidenav-show bg-gray-100">
+<div class="min-height-300 bg-dark position-absolute w-100"></div>
+
+  {% include 'style/aside.html' %}
+
+<main class="main-content position-relative border-radius-lg">
+    
+    {% include 'style/navbar.html' %}
+
+  <div class="container-fluid py-4">
+    <div class="row justify-content-center">
+      <div class="col-lg-6">
+
+        <div class="card">
+          <div class="card-header pb-0">
+            <h5 class="mb-0">Edit Jadwal Guru</h5>
+          </div>
+
+          <div class="card-body">
+
+<form method="POST">
+
+<!-- MAPEL -->
+<div class="mb-3">
+  <label class="form-label fw-bold">Mata Pelajaran</label>
+  <select name="mapel" class="form-select" required>
+    {% for m in semua_mapel %}
+      <option value="{{ m.mapel }}" {% if m.mapel == jadwal.mapel %}selected{% endif %}>
+        {{ m.mapel }}
+      </option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- GURU -->
+<div class="mb-3">
+  <label class="form-label fw-bold">Nama Guru</label>
+  <select name="guru" class="form-select" required>
+    {% for g in semua_guru %}
+      <option value="{{ g.guru }}" {% if g.guru == jadwal.guru %}selected{% endif %}>
+        {{ g.guru }}
+      </option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- KELAS (MULTIPLE) -->
+<div class="mb-3">
+  <label class="form-label fw-bold">Kelas yang Diajar</label>
+  <select name="kelas_ajar" class="form-select" multiple required>
+    {% for k in semua_kelas %}
+      <option value="{{ k.nama }}" {% if k.nama in jadwal.kelas_ajar %}selected{% endif %}>
+        {{ k.nama }}
+      </option>
+    {% endfor %}
+  </select>
+  <small class="text-muted">CTRL / CMD untuk pilih lebih dari satu</small>
+</div>
+
+<!-- JUMLAH JAM -->
+<div class="mb-3">
+  <label class="form-label fw-bold">Jumlah Jam per Minggu</label>
+  <input type="number"
+         name="jumlah_jam"
+         id="jumlahJam"
+         class="form-control"
+         min="1"
+         max="10"
+         value="{{ jadwal.jumlah_jam }}"
+         required>
+</div>
+
+<!-- BERURUTAN -->
+<div class="mb-3">
+  <div class="form-check">
+    <input class="form-check-input"
+           type="checkbox"
+           name="berurutan"
+           id="berurutanCheckbox"
+           {% if jadwal.berurutan %}checked{% endif %}>
+    <label class="form-check-label fw-bold" for="berurutanCheckbox">
+      Jadwal Bersebelah
+    </label>
+  </div>
+</div>
+
+<!-- PREFERENSI -->
+<div class="mb-3">
+  <label class="form-label fw-bold">Preferensi Waktu (Opsional)</label><br>
+
+  <button type="button"
+          id="togglePrefBtn"
+          class="btn btn-outline-secondary btn-sm mt-2">
+    Tampilkan Preferensi Waktu ▼
+  </button>
+
+  <div id="prefContainer"
+       class="mt-3 border rounded p-3 bg-light"
+       style="display:none; max-height:300px; overflow-y:auto;">
+    {% for h in ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"] %}
+      <strong class="text-primary">{{ h }}</strong><br>
+      <div class="row mb-2">
+        {% for s in [
+          "07.30–08.00","08.00–08.30","08.30–09.00",
+          "09.00–09.30","09.30–10.00","10.00–10.20",
+          "10.20–10.50","10.50–11.20",
+          "11.20–11.50","11.50–12.20","12.20–13.00"
+        ] %}
+          <div class="col-md-4 col-sm-6">
+            <div class="form-check">
+              <input class="form-check-input pref-checkbox"
+                     type="checkbox"
+                     name="preferensi"
+                     value="{{ h }}|{{ s }}"
+                     {% if (h ~ '|' ~ s) in jadwal.preferensi %}checked{% endif %}>
+              <label class="form-check-label">{{ s }}</label>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- BUTTON -->
+<div class="d-flex gap-2 mt-4">
+  <button type="submit" class="btn bg-gradient-info">
+    <i class="fas fa-save me-1"></i> Update Jadwal
+  </button>
+  <a href="{{ url_for('dashboard') }}" class="btn bg-gradient-warning">
+    <i class="fas fa-arrow-left me-1"></i> Kembali
+  </a>
+</div>
+
+</form>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- JS untuk toggle preferensi dan batas checkbox -->
+<script>
+const toggleBtn = document.getElementById('togglePrefBtn');
+const prefContainer = document.getElementById('prefContainer');
+const jumlahJamInput = document.getElementById('jumlahJam');
+const checkboxes = document.querySelectorAll('.pref-checkbox');
+const berurutanCheckbox = document.getElementById('berurutanCheckbox');
+
+toggleBtn.addEventListener('click', () => {
+  const show = prefContainer.style.display === 'none';
+  prefContainer.style.display = show ? 'block' : 'none';
+  toggleBtn.textContent = show
+    ? 'Sembunyikan Preferensi Waktu ▲'
+    : 'Tampilkan Preferensi Waktu ▼';
+});
+
+function updateCheckboxLimit() {
+  const maxChecked = parseInt(jumlahJamInput.value) || 0;
+  const checked = [...checkboxes].filter(cb => cb.checked);
+  const isBerurutan = berurutanCheckbox.checked;
+
+  if (isBerurutan) {
+    checkboxes.forEach(cb => {
+      cb.checked = false;
+      cb.disabled = true;
+    });
+    prefContainer.style.opacity = 0.5;
+  } else {
+    checkboxes.forEach(cb => cb.disabled = false);
+    prefContainer.style.opacity = 1;
+
+    if (checked.length >= maxChecked) {
+      checkboxes.forEach(cb => {
+        if (!cb.checked) cb.disabled = true;
+      });
+    }
+  }
+}
+
+berurutanCheckbox.addEventListener('change', updateCheckboxLimit);
+jumlahJamInput.addEventListener('input', updateCheckboxLimit);
+checkboxes.forEach(cb => cb.addEventListener('change', updateCheckboxLimit));
+
+window.addEventListener('DOMContentLoaded', updateCheckboxLimit);
+</script>
+
+</body>
+</html>
