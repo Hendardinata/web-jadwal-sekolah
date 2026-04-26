@@ -29,6 +29,7 @@ kelas_collection = db["kelas"]
 locked_slots_collection = db['locked_slots']
 status_collection = db['status']
 jadwal_final_collection = db['final_jadwal']
+deleted_slots_collection = db['deleted_slots']
 
 #------------------------------------------------------
 #                    MIDDLERWARE
@@ -64,7 +65,7 @@ def login():
         user = users.get(username)
         if user and user['password'] == password:
             session['username'] = username
-            session['role'] = user['role']  # Simpan role di session
+            session['role'] = user['role']
             flash('Login berhasil!', 'success')
             return redirect(url_for('dashboard'))
         else:
@@ -94,8 +95,58 @@ def dashboard():
     semua_guru = list(db.guru.find())
     semua_jadwal = list(db.jadwal.find())
 
+    #----------------------
+    # STATISTIK DASHBOARD
+    #----------------------
+
+    morning_slots = {
+        "07.30–08.00",
+        "08.00–08.30",
+        "08.30–09.00",
+        "09.00–09.30",
+        "09.30–10.00"
+    }
+
+    mapel_bobot_map = {
+        doc['mapel']: doc.get('bobot', 'sedang')
+        for doc in guru_mapel_collection.find()
+    }
+
+    jadwal = list(jadwal_final_collection.find())
+
+    pagi = 0
+    siang = 0
+    mapel_count = {}
+    berat_pagi = 0
+    berat_total = 0
+
+    for j in jadwal:
+        m = j['mapel']
+        s = j['waktu']
+        bobot = mapel_bobot_map.get(m, 'sedang')
+
+        # pagi / siang
+        if s in morning_slots:
+            pagi += 1
+        else:
+            siang += 1
+
+        # distribusi mapel
+        mapel_count[m] = mapel_count.get(m, 0) + 1
+
+        # mapel berat
+        if bobot == 'berat':
+            berat_total += 1
+            if s in morning_slots:
+                berat_pagi += 1
+
     return render_template(
         "dashboard.html",
+        pagi=pagi,
+        siang=siang,
+        mapel_count=mapel_count,
+        berat_pagi=berat_pagi,
+        berat_total=berat_total,
         semua_kelas=semua_kelas,
         semua_mapel=semua_mapel,
         semua_guru=semua_guru,
@@ -117,6 +168,9 @@ def jadwal():
         flash('Silakan login terlebih dahulu.', 'warning')
         return redirect(url_for('login'))
 
+    # ==============================
+    # HANDLE INPUT DATA (POST)
+    # ==============================
     if request.method == 'POST':
         mapel = request.form['mapel']
         guru = request.form['guru']
@@ -140,35 +194,39 @@ def jadwal():
         )
         return redirect('/')
 
+    # ==============================
+    # AMBIL DATA DASAR
+    # ==============================
     guru_mapel_data = {doc['mapel']: doc.get('guru', []) for doc in guru_mapel_collection.find()}
     preferensi_map = {doc['guru']: doc.get('preferensi', []) for doc in guru_collection.find()}
     guru_kelas_map = {doc['guru']: doc.get('kelas_ajar', []) for doc in guru_collection.find()}
     daftar_kelas = [k['nama'] for k in kelas_collection.find({}, {"_id": 0})]
     locked_slots = list(locked_slots_collection.find({}, {"_id": 0}))
+
     status = status_collection.find_one({"key": "lock_status"})
     is_locked = status['locked'] if status else False
 
-    if is_locked:
-        jadwal_db = list(jadwal_final_collection.find({}, {"_id": 0}))
-        jadwal = [(item['kelas'], item['hari'], item['waktu'], item['mapel'], item['guru']) for item in jadwal_db]
-    else:
-        jadwal = run_ga(
-            guru_mapel=guru_mapel_data,
-            preferensi_map=preferensi_map,
-            guru_kelas_map=guru_kelas_map,
-            daftar_kelas=daftar_kelas,
-            locked_slots=locked_slots,
-            global_lock=False
-        )
-        if jadwal:
-            jadwal_final_collection.delete_many({})
-            jadwal_final_collection.insert_many([
-                {"kelas": k, "hari": h, "waktu": s, "mapel": m, "guru": g}
-                for k, h, s, m, g in jadwal
-            ])
+    # ==============================
+    # FIX UTAMA: TIDAK ADA AUTO GA
+    # ==============================
+    jadwal_db = list(jadwal_final_collection.find({}, {"_id": 0}))
 
-    fitness_info = evaluate_fitness(jadwal, preferensi_map)
+    jadwal = [
+        (item['kelas'], item['hari'], item['waktu'], item['mapel'], item['guru'])
+        for item in jadwal_db
+    ]
 
+    # ==============================
+    # HITUNG FITNESS (OPSIONAL)
+    # ==============================
+    fitness_info = evaluate_fitness(jadwal, preferensi_map) if jadwal else {
+        "score": 0,
+        "conflict": 0
+    }
+
+    # ==============================
+    # FORMAT DATA UNTUK TAMPILAN
+    # ==============================
     data = {}
     for doc in jadwal_final_collection.find():
         kls = doc['kelas']
@@ -180,24 +238,23 @@ def jadwal():
             "id": str(doc['_id'])
         }
 
-
     semua_kelas = list(kelas_collection.find({}, {'_id': 0, 'nama': 1}))
     semua_mapel = list(guru_mapel_collection.find({}, {'_id': 0, 'mapel': 1}))
     semua_guru = list(guru_collection.find({}, {'_id': 0, 'guru': 1}))
 
-    # Kode Baru
+    # ==============================
+    # FITUR SEARCH
+    # ==============================
     search = request.args.get('search', '').strip().lower()
 
     if search:
         filtered_data = {}
 
         for kelas, hari_data in data.items():
-            # search by nama kelas
             if search in kelas.lower():
                 filtered_data[kelas] = hari_data
                 continue
 
-            # search by isi cell (mapel / guru)
             for hari, waktu_data in hari_data.items():
                 for waktu, cell in waktu_data.items():
                     if search in cell["text"].lower():
@@ -205,17 +262,21 @@ def jadwal():
 
         data = filtered_data
 
-
-    return render_template("index.html",
-                           jadwal=data,
-                           fitness_info=fitness_info,
-                           is_locked=is_locked,
-                           semua_kelas=semua_kelas,
-                           semua_mapel=semua_mapel,
-                           semua_guru=semua_guru,
-                           locked_slots=locked_slots,
-                           search=search or '',
-                           title="Jadwal")
+    # ==============================
+    # RENDER
+    # ==============================
+    return render_template(
+        "index.html",
+        jadwal=data,
+        fitness_info=fitness_info,
+        is_locked=is_locked,
+        semua_kelas=semua_kelas,
+        semua_mapel=semua_mapel,
+        semua_guru=semua_guru,
+        locked_slots=locked_slots,
+        search=search or '',
+        title="Jadwal"
+    )
 
 #------------------------------------------------------
 #                MANAGEMENT JADWAL
@@ -291,24 +352,12 @@ def management_jadwal():
     is_locked = status['locked'] if status else False
 
     # === Jalankan GA atau ambil jadwal final ===
-    if is_locked:
-        jadwal_db = list(jadwal_final_collection.find({}, {"_id": 0}))
-        jadwal = [(item['kelas'], item['hari'], item['waktu'], item['mapel'], item['guru']) for item in jadwal_db]
-    else:
-        jadwal = run_ga(
-            guru_mapel=guru_mapel_data,
-            preferensi_map=preferensi_map,
-            guru_kelas_map=guru_kelas_map,
-            daftar_kelas=daftar_kelas,
-            locked_slots=locked_slots,
-            global_lock=False
-        )
-        if jadwal:
-            jadwal_final_collection.delete_many({})
-            jadwal_final_collection.insert_many([
-                {"kelas": k, "hari": h, "waktu": s, "mapel": m, "guru": g}
-                for k, h, s, m, g in jadwal
-            ])
+    jadwal_db = list(jadwal_final_collection.find({}, {"_id": 0}))
+
+    jadwal = [
+        (item['kelas'], item['hari'], item['waktu'], item['mapel'], item['guru'])
+        for item in jadwal_db
+    ]
 
     # === Hitung nilai fitness ===
     fitness_info = evaluate_fitness(jadwal, preferensi_map)
@@ -561,10 +610,16 @@ def tambah_mapel():
     
     if request.method == 'POST':
         nama_mapel = request.form['mapel'].strip()
+        bobot = request.form.get('bobot', 'sedang')  # default sedang
+
         if nama_mapel:
             existing = guru_mapel_collection.find_one({"mapel": nama_mapel})
             if not existing:
-                guru_mapel_collection.insert_one({"mapel": nama_mapel, "guru": []})
+                guru_mapel_collection.insert_one({
+                    "mapel": nama_mapel,
+                    "guru": [],
+                    "bobot": bobot
+                })
         return redirect('/mapel')
 
     daftar_mapel = list(guru_mapel_collection.find({}, {"_id": 0}))
@@ -596,23 +651,35 @@ def edit_mapel(mapel_lama):
         return redirect(url_for('login'))
 
     mapel_lama = mapel_lama.strip()
+    data_lama = guru_mapel_collection.find_one({"mapel": mapel_lama}) or {}
 
     if request.method == 'POST':
         mapel_baru = request.form['mapel'].strip()
-        if mapel_baru and mapel_baru != mapel_lama:
-            # Pastikan tidak ada duplikat
+        bobot_baru = request.form.get('bobot', 'sedang')
+
+        if mapel_baru:
             existing = guru_mapel_collection.find_one({"mapel": mapel_baru})
-            if not existing:
+
+            if not existing or mapel_baru == mapel_lama:
                 guru_mapel_collection.update_one(
                     {"mapel": mapel_lama},
-                    {"$set": {"mapel": mapel_baru}}
+                    {"$set": {
+                        "mapel": mapel_baru,
+                        "bobot": bobot_baru
+                    }}
                 )
-                flash("Nama mapel berhasil diperbarui.", "success")
+                flash("Mapel berhasil diperbarui.", "success")
             else:
-                flash("Nama mapel baru sudah ada!", "danger")
+                flash("Nama mapel sudah ada!", "danger")
+
         return redirect('/mapel')
 
-    return render_template("mapel_edit.html", mapel_lama=mapel_lama, title="Edit Mata Pelajaran")
+    return render_template(
+        "mapel_edit.html",
+        mapel_lama=mapel_lama,
+        bobot_lama=data_lama.get("bobot", "sedang"),
+        title="Edit Mata Pelajaran"
+    )
 
 @app.route('/guru_edit/<nama_lama>', methods=['GET', 'POST'])
 def edit_guru(nama_lama):
@@ -711,6 +778,160 @@ def toggle_global_lock():
 
 def get_locked_slots():
     return list(locked_slots_collection.find({}, {"_id": 0}))
+
+@app.route('/jadwal/hapus/<id>', methods=['POST'])
+def hapus_jadwal(id):
+    try:
+        obj_id = ObjectId(id)
+    except:
+        return jsonify({"error": "ID tidak valid"}), 400
+
+    data = jadwal_final_collection.find_one({"_id": obj_id})
+
+    if not data:
+        return jsonify({"error": "data tidak ditemukan"}), 404
+
+    kelas = data["kelas"]
+    mapel = data["mapel"]
+    guru = data["guru"]
+
+    # -------------------------
+    # HAPUS DI FINAL
+    #----------------------
+    jadwal_final_collection.delete_many({
+        "kelas": kelas,
+        "mapel": mapel,
+        "guru": guru
+    })
+
+    #----------------------
+    # HAPUS DI LOCKED
+    #----------------------
+    locked_slots_collection.delete_many({
+        "kelas": kelas,
+        "mapel": mapel,
+        "guru": guru
+    })
+
+    #----------------------
+    # PUTUS RELASI HANYA DI KELAS INI
+    #----------------------
+    guru_collection.update_one(
+        {"guru": guru},
+        {"$pull": {"kelas_ajar": kelas}}
+    )
+
+    return jsonify({"success": True})
+
+@app.route('/generate_jadwal', methods=['POST'])
+@role_required('admin')
+def generate_jadwal():
+
+    #----------------------
+    # CEK LOCK GLOBAL
+    #----------------------
+    status = status_collection.find_one({"key": "lock_status"})
+    is_locked = status['locked'] if status else False
+
+    if is_locked:
+        flash("Jadwal sedang terkunci!", "danger")
+        return redirect(url_for('jadwal'))
+
+    #----------------------
+    # AMBIL DATA MASTER
+    #----------------------
+    guru_mapel_data = {
+        doc['mapel']: doc.get('guru', [])
+        for doc in guru_mapel_collection.find()
+    }
+
+    preferensi_map = {
+        doc['guru']: doc.get('preferensi', [])
+        for doc in guru_collection.find()
+    }
+
+    guru_kelas_map = {
+        doc['guru']: doc.get('kelas_ajar', [])
+        for doc in guru_collection.find()
+    }
+
+    daftar_kelas = [
+        k['nama'] for k in kelas_collection.find({}, {"_id": 0})
+    ]
+
+    locked_slots = list(
+        locked_slots_collection.find({}, {"_id": 0})
+    )
+
+    mapel_bobot_map = {
+        doc['mapel']: doc.get('bobot', 'sedang')
+        for doc in guru_mapel_collection.find()
+    }
+
+    #----------------------
+    # AMBIL BLACKLIST (PENTING)
+    #----------------------
+    deleted_slots = list(
+        deleted_slots_collection.find({}, {"_id": 0})
+    )
+
+    def is_deleted(kls, h, s, m, g):
+        return any(
+            d["kelas"] == kls and
+            d["hari"] == h and
+            d["waktu"] == s and
+            d["mapel"] == m and
+            d["guru"] == g
+            for d in deleted_slots
+        )
+
+    #----------------------
+    # RUN GA
+    #----------------------
+    jadwal = run_ga(
+        guru_mapel=guru_mapel_data,
+        preferensi_map=preferensi_map,
+        guru_kelas_map=guru_kelas_map,
+        daftar_kelas=daftar_kelas,
+        locked_slots=locked_slots,
+        global_lock=False,
+        mapel_bobot_map=mapel_bobot_map
+    )
+
+    if not jadwal:
+        flash("Generate gagal: jadwal kosong", "danger")
+        return redirect(url_for('jadwal'))
+
+    #----------------------
+    # FILTER HASIL GA
+    #----------------------
+    filtered_jadwal = [
+        (k, h, s, m, g)
+        for k, h, s, m, g in jadwal
+        if not is_deleted(k, h, s, m, g)
+    ]
+
+    #----------------------
+    # RESET + SIMPAN BARU
+    #----------------------
+    jadwal_final_collection.delete_many({})
+
+    insert_data = [
+        {
+            "kelas": k,
+            "hari": h,
+            "waktu": s,
+            "mapel": m,
+            "guru": g
+        }
+        for k, h, s, m, g in filtered_jadwal
+    ]
+
+    if insert_data:
+        jadwal_final_collection.insert_many(insert_data)
+
+    flash("Generate jadwal berhasil!", "success")
+    return redirect(url_for('jadwal'))
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -39,7 +39,11 @@
                   <div>
                     <!-- Tombol Lock/Unlock -->
                     <button class="btn btn-sm btn-outline-dark" id="btnLockGlobal">
-                      {{ "🔒 Unlock Jadwal" if is_locked else "🔓 Lock Jadwal" }}
+                      {% if is_locked %}
+                        <i class="fas fa-lock me-2"></i> Unlock Jadwal
+                      {% else %}
+                        <i class="fas fa-unlock me-2"></i> Lock Jadwal
+                      {% endif %}
                     </button>
 
                     <!-- Status Global di bawah tombol Lock/Unlock -->
@@ -49,6 +53,12 @@
                       </span>
                     </p>
                   </div>
+
+                  <form method="POST" action="/generate_jadwal">
+                    <button class="btn btn-sm btn-success">
+                      <i class="fas fa-sync-alt me-2"></i> Generate Jadwal
+                    </button>
+                  </form>
 
                   <!-- Dropdown Export -->
                   <div class="dropdown">
@@ -161,16 +171,23 @@
       </div>
     </div>
 
-<div class="dropdown d-none" id="contextDropdown"
-     style="position: fixed; z-index: 9999;">
-  <ul class="dropdown-menu show shadow">
-    <li>
-      <button class="dropdown-item fw-semibold" id="editCell">
-        <i class="fas fa-pen me-2"></i>Edit Jadwal
-      </button>
-    </li>
-  </ul>
-</div>
+    <div class="dropdown d-none" id="contextDropdown"
+        style="position: fixed; z-index: 9999;">
+      <ul class="dropdown-menu show shadow">
+        <li>
+          <button class="dropdown-item fw-semibold" id="editCell">
+            <i class="fas fa-pen me-2"></i>Edit Jadwal
+          </button>
+        </li>
+          {% if session['role'] == 'admin' %}
+        <li>
+          <button class="dropdown-item text-danger fw-semibold" id="deleteCell">
+            <i class="fas fa-trash me-2"></i>Hapus Jadwal
+          </button>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
 
 
   </main>
@@ -198,16 +215,60 @@
           const btn = document.getElementById('btnLockGlobal');
           const statusText = document.getElementById('statusGlobal');
           if (data.locked) {
-            btn.textContent = '🔒 Unlock Jadwal';
+            btn.textContent = 'Unlock Jadwal';
             statusText.textContent = 'TERKUNCI';
           } else {
-            btn.textContent = '🔓 Lock Jadwal';
+            btn.textContent = 'Lock Jadwal';
             statusText.textContent = 'TERBUKA';
           }
           location.reload();
         });
     });
   </script>
+
+<script>
+const deleteBtn = document.getElementById('deleteCell');
+
+if (deleteBtn) {
+  deleteBtn.addEventListener('click', () => {
+    if (!selectedId) return;
+
+    const isLocked = {{ 'true' if is_locked else 'false' }};
+
+    // ============================
+    // VALIDASI LOCK DI FRONTEND
+    // ============================
+    if (isLocked) {
+      alert("Jadwal sedang dikunci! Tidak bisa menghapus.");
+      return;
+    }
+
+    // ============================
+    // KONFIRMASI USER
+    // ============================
+    const confirmDelete = confirm("Yakin ingin menghapus jadwal ini?");
+    if (!confirmDelete) return;
+
+    // ============================
+    // REQUEST KE BACKEND
+    // ============================
+    fetch(`/jadwal/hapus/${selectedId}`, {
+      method: 'POST'
+    })
+    .then(res => {
+      if (res.redirected) {
+        window.location.href = res.url;
+      } else {
+        location.reload();
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Terjadi kesalahan saat menghapus.");
+    });
+  });
+}
+</script>
 
 <script>
 const menu = document.getElementById('contextDropdown');

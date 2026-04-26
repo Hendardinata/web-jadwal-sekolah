@@ -4,175 +4,250 @@
 <head>
   {% include 'style/header.html' %}
   {% include 'style/headDashboard.html'%}  
-  
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet" />
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+  .card-hover {
+    transition: all 0.3s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+  }
+
+  .icon-hover {
+  transition: all 0.3s ease;
+  }
+
+  .card-hover:hover .icon-hover {
+    transform: scale(1.15) rotate(5deg);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+  }
+
+  .card-hover:hover h5 {
+  transform: scale(1.05);
+  transition: 0.3s;
+  }
+
+  .chart-card {
+  transition: 0.3s;
+  }
+
+  .chart-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  }
+
+  </style>
+
 </head>
 
 <body class="g-sidenav-show bg-gray-100">
-  <div class="min-height-300 bg-dark position-absolute w-100"></div>
+<div class="min-height-300 bg-dark position-absolute w-100"></div>
 
-  {% include 'style/aside.html' %}
+{% include 'style/aside.html' %}
 
-  <main class="main-content position-relative border-radius-lg">
+<main class="main-content position-relative border-radius-lg">
+{% include 'style/navbar.html' %}
 
-    {% include 'style/navbar.html' %}
+<div class="container-fluid py-4">
 
-    <div class="container-fluid py-4">
-      <div class="row">
-        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
-          <div class="card">
-            <div class="card-body p-3">
-              <div class="row">
-                <div class="col-8">
-                  <div class="numbers">
-                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Jumlah Guru</p>
-                    <h5 class="font-weight-bolder">{{ jumlah_guru }}</h5>
-                    <p class="mb-0">
-                      <span class="text-success text-sm font-weight-bolder">+2</span> minggu ini
-                    </p>
-                  </div>
-                </div>
-                <div class="col-4 text-end">
-                  <div class="icon icon-shape bg-gradient-primary shadow-primary text-center rounded-circle">
-                    <i class="ni ni-single-02 text-lg opacity-10" aria-hidden="true"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
+  <!-- ===================== -->
+  <!-- CARD SUMMARY -->
+  <!-- ===================== -->
+  <div class="row g-3">
+
+    {% set cards = [
+      ("Jumlah Guru", jumlah_guru, "ni-single-02", "primary"),
+      ("Jumlah Mapel", jumlah_mapel, "ni-book-bookmark", "danger"),
+      ("Jumlah Kelas", jumlah_kelas, "ni-hat-3", "success"),
+      ("Total Jadwal", total_jadwal, "ni-calendar-grid-58", "info")
+    ] %}
+
+    {% for title, value, icon, color in cards %}
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100 card-hover">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <p class="text-sm text-muted mb-1">{{ title }}</p>
+            <h5 class="fw-bold mb-0">{{ value }}</h5>
           </div>
-        </div>
-
-        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
-          <div class="card">
-            <div class="card-body p-3">
-              <div class="row">
-                <div class="col-8">
-                  <div class="numbers">
-                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Jumlah Mapel</p>
-                    <h5 class="font-weight-bolder">{{ jumlah_mapel }}</h5>
-                    <p class="mb-0">
-                      <span class="text-success text-sm font-weight-bolder">Lengkap</span>
-                    </p>
-                  </div>
-                </div>
-                <div class="col-4 text-end">
-                  <div class="icon icon-shape bg-gradient-danger shadow-danger text-center rounded-circle">
-                    <i class="ni ni-book-bookmark text-lg opacity-10" aria-hidden="true"></i>
-                  </div>
-                </div>
-              </div>
+            <div class="icon icon-shape icon-circle bg-gradient-{{ color }} text-white rounded-circle shadow icon-hover">
+              <i class="ni {{ icon }}" style="font-size:20px;"></i>
             </div>
-          </div>
-        </div>
-
-        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
-          <div class="card">
-            <div class="card-body p-3">
-              <div class="row">
-                <div class="col-8">
-                  <div class="numbers">
-                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Jumlah Kelas</p>
-                    <h5 class="font-weight-bolder">{{ jumlah_kelas }}</h5>
-                    <p class="mb-0">
-                      <span class="text-info text-sm font-weight-bolder">Aktif</span>
-                    </p>
-                  </div>
-                </div>
-                <div class="col-4 text-end">
-                  <div class="icon icon-shape bg-gradient-success shadow-success text-center rounded-circle">
-                    <i class="ni ni-hat-3 text-lg opacity-10" aria-hidden="true"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
-          <div class="card">
-            <div class="card-body p-3">
-              <div class="row">
-                <div class="col-8">
-                  <div class="numbers">
-                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Coming Soon</p>
-                    <h5 class="font-weight-bolder"> - - </h5>
-                    <p class="mb-0">
-                      <span class="text-info text-sm font-weight-bolder">Non Aktif</span>
-                    </p>
-                  </div>
-                </div>
-                <div class="col-4 text-end">
-                  <div class="icon icon-shape bg-gradient-success shadow-success text-center rounded-circle">
-                    <i class="ni ni-hat-3 text-lg opacity-10" aria-hidden="true"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
+    </div>
+    {% endfor %}
 
-      <!-- Kalender -->
-      <div class="row mt-4">
-        <div class="col-12">
-          <div class="card z-index-2 h-100">
-            <div class="card-header pb-0 pt-3 bg-transparent">
-              <h6 class="text-capitalize">Kalender Jadwal</h6>
-              <p class="text-sm mb-0">
-                <i class="fa fa-calendar text-primary"></i>
-                <span class="font-weight-bold">Lihat Hari & Tanggal</span>
-              </p>
-            </div>
-            <div class="card-body p-3">
-              <div id="simple-calendar" class="w-100"></div>
-            </div>
+  </div>
+
+  <!-- ===================== -->
+  <!-- CHART SECTION -->
+  <!-- ===================== -->
+  <div class="row mt-4 g-3">
+
+    <!-- PIE -->
+    <div class="col-lg-4 col-md-6">
+      <div class="card shadow-sm border-0 h-100 chart-card">
+        <div class="card-header pb-0">
+          <h6 class="mb-0">Distribusi Waktu</h6>
+        </div>
+        <div class="card-body d-flex justify-content-center align-items-center">
+          <div style="max-width: 220px; width: 100%;">
+            <canvas id="chartWaktu"></canvas>
           </div>
         </div>
       </div>
     </div>
-  </main>
+
+    <!-- BAR -->
+    <div class="col-lg-8 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header pb-0">
+          <h6 class="mb-0">Distribusi Mata Pelajaran</h6>
+        </div>
+        <div class="card-body" style="height: 280px;">
+          <canvas id="chartMapel"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== -->
+  <!-- PROGRESS MAPEL BERAT -->
+  <!-- ===================== -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card shadow-sm border-0">
+        <div class="card-body text-center">
+
+          <h6 class="text-muted">Distribusi Mapel Berat di Pagi</h6>
+
+          {% set persen = (berat_pagi / berat_total * 100) if berat_total > 0 else 0 %}
+
+          <h3 class="fw-bold mb-2">
+            {{ berat_pagi }} / {{ berat_total }}
+          </h3>
+
+          <!-- Progress bar -->
+          <div class="progress mx-auto" style="height: 10px; max-width: 400px;">
+            <div class="progress-bar 
+              {% if persen > 70 %} bg-success
+              {% elif persen > 40 %} bg-warning
+              {% else %} bg-danger
+              {% endif %}"
+              style="width: {{ persen }}%">
+            </div>
+          </div>
+
+          <small class="text-muted">{{ persen | round(1) }}%</small>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== -->
+  <!-- CALENDAR -->
+  <!-- ===================== -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card shadow-sm border-0">
+        <div class="card-header pb-0">
+          <h6>Kalender</h6>
+        </div>
+        <div class="card-body">
+          <div id="simple-calendar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<!-- ===================== -->
+<!-- SCRIPT -->
+<!-- ===================== -->
 
 <script>
-  function generateCalendar() {
-    const calendarEl = document.getElementById('simple-calendar');
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const today = now.getDate();
+document.addEventListener('DOMContentLoaded', function () {
 
-    const monthNames = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
+  // =========================
+  // DATA
+  // =========================
+  const pagi = {{ pagi | tojson }} || 0;
+  const siang = {{ siang | tojson }} || 0;
+  const mapelData = {{ mapel_count | tojson }} || {};
 
-    const firstDay = new Date(year, month, 1).getDay(); // Minggu = 0
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    let table = `<h4 class="mb-3 text-dark">${monthNames[month]} ${year}</h4>`;
-    table += `<table><tr>
-                <th>Min</th><th>Sen</th><th>Sel</th><th>Rab</th>
-                <th>Kam</th><th>Jum</th><th>Sab</th>
-              </tr><tr>`;
-
-    for (let i = 0; i < firstDay; i++) {
-      table += '<td></td>';
+  // =========================
+  // PIE CHART
+  // =========================
+  new Chart(document.getElementById('chartWaktu'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Pagi', 'Siang'],
+      datasets: [{
+        data: [pagi, siang],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: 'bottom' }
+      },
+      cutout: '65%'
     }
+  });
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const isToday = (day === today) ? `<span class="today">${day}</span>` : day;
-      table += `<td>${isToday}</td>`;
-      if ((day + firstDay) % 7 === 0) {
-        table += '</tr><tr>';
+  // =========================
+  // BAR CHART
+  // =========================
+  new Chart(document.getElementById('chartMapel'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(mapelData),
+      datasets: [{
+        label: 'Jumlah Slot',
+        data: Object.values(mapelData)
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
       }
     }
+  });
 
-    table += '</tr></table>';
-    calendarEl.innerHTML = table;
+});
+</script>
+
+<script>
+function generateCalendar() {
+  const el = document.getElementById('simple-calendar');
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  const days = new Date(year, month + 1, 0).getDate();
+  let html = `<div class="text-center fw-bold mb-3">${year} - ${month+1}</div>`;
+  html += '<div class="d-flex flex-wrap">';
+
+  for (let i = 1; i <= days; i++) {
+    html += `<div style="width:14.2%;padding:5px;text-align:center;">${i}</div>`;
   }
 
-  document.addEventListener('DOMContentLoaded', generateCalendar);
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+generateCalendar();
 </script>
 
 </body>
