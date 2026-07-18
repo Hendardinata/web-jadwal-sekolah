@@ -832,12 +832,32 @@ def hapus_jadwal(id):
     })
 
     #----------------------
-    # PUTUS RELASI HANYA DI KELAS INI
+    # PUTUS RELASI KELAS JIKA GURU TIDAK MENGAJAR MAPEL APAPUN LAGI DI KELAS INI
     #----------------------
-    guru_collection.update_one(
-        {"guru": guru},
-        {"$pull": {"kelas_ajar": kelas}}
-    )
+    remaining_in_kelas = jadwal_final_collection.find_one({
+        "guru": guru,
+        "kelas": kelas
+    })
+    
+    if not remaining_in_kelas:
+        guru_collection.update_one(
+            {"guru": guru},
+            {"$pull": {"kelas_ajar": kelas}}
+        )
+
+    #----------------------
+    # HAPUS DI PENGAMPU JIKA GURU SUDAH TIDAK MENGAJAR MAPEL INI
+    #----------------------
+    remaining_jadwal = jadwal_final_collection.find_one({
+        "guru": guru,
+        "mapel": mapel
+    })
+    
+    if not remaining_jadwal:
+        guru_mapel_collection.update_one(
+            {"mapel": mapel},
+            {"$pull": {"guru": guru}}
+        )
 
     return jsonify({"success": True})
 
