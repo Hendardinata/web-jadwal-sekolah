@@ -74,8 +74,8 @@
             <p class="text-sm text-muted mb-1">{{ title }}</p>
             <h5 class="fw-bold mb-0">{{ value }}</h5>
           </div>
-            <div class="icon icon-shape icon-circle bg-gradient-{{ color }} text-white rounded-circle shadow icon-hover">
-              <i class="ni {{ icon }}" style="font-size:20px;"></i>
+            <div class="icon icon-shape icon-circle bg-gradient-{{ color }} text-white text-center rounded-circle shadow icon-hover">
+              <i class="ni {{ icon }}" style="font-size:20px; line-height: 3rem; top: 0; position: relative;"></i>
             </div>
         </div>
       </div>
@@ -118,10 +118,11 @@
   </div>
 
   <!-- ===================== -->
-  <!-- PROGRESS MAPEL BERAT -->
+  <!-- PROGRESS & CALENDAR -->
   <!-- ===================== -->
-  <div class="row mt-4">
-    <div class="col-12">
+  <div class="row mt-4 g-3">
+    <!-- PROGRESS MAPEL BERAT -->
+    <div class="col-lg-6 col-md-12">
       <div class="card shadow-sm border-0">
         <div class="card-body text-center">
 
@@ -149,13 +150,9 @@
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- ===================== -->
-  <!-- CALENDAR -->
-  <!-- ===================== -->
-  <div class="row mt-4">
-    <div class="col-12">
+    <!-- CALENDAR -->
+    <div class="col-lg-6 col-md-12">
       <div class="card shadow-sm border-0">
         <div class="card-header pb-0">
           <h6>Kalender</h6>
@@ -228,27 +225,101 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+<style>
+/* Sleek, Compact Calendar Styling */
+.calendar-wrapper {
+  max-width: 320px;
+  margin: 0 auto;
+}
+.calendar-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+  font-weight: 700;
+  color: #adb5bd;
+  font-size: 0.75rem;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #495057;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.calendar-day:not(.empty-day):hover {
+  background-color: #e9ecef;
+  transform: scale(1.05);
+}
+.calendar-day.today {
+  background: linear-gradient(310deg, #5e72e4, #825ee4);
+  color: white;
+  box-shadow: 0 4px 8px rgba(94, 114, 228, 0.4);
+}
+.month-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #344767;
+}
+</style>
 <script>
 function generateCalendar() {
   const el = document.getElementById('simple-calendar');
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
+  const today = now.getDate();
 
-  const days = new Date(year, month + 1, 0).getDate();
-  let html = `<div class="text-center fw-bold mb-3">${year} - ${month+1}</div>`;
-  html += '<div class="d-flex flex-wrap">';
+  const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
-  for (let i = 1; i <= days; i++) {
-    html += `<div style="width:14.2%;padding:5px;text-align:center;">${i}</div>`;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startDay = new Date(year, month, 1).getDay();
+
+  let html = `<div class="calendar-wrapper">`;
+  
+  html += `<div class="d-flex justify-content-between align-items-center mb-3">
+             <h5 class="month-title mb-0">${monthNames[month]} ${year}</h5>
+             <span class="badge bg-gradient-primary rounded-pill" style="font-size: 0.65rem;">Hari Ini: ${today}</span>
+           </div>`;
+
+  html += `<div class="calendar-header">`;
+  dayNames.forEach(day => {
+    html += `<div>${day}</div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="calendar-grid">`;
+
+  for (let i = 0; i < startDay; i++) {
+    html += `<div class="calendar-day empty-day"></div>`;
   }
 
-  html += '</div>';
+  for (let i = 1; i <= daysInMonth; i++) {
+    const isToday = (i === today) ? 'today' : '';
+    html += `<div class="calendar-day ${isToday}">${i}</div>`;
+  }
+
+  html += `</div></div>`;
   el.innerHTML = html;
 }
 
 generateCalendar();
 </script>
-
+<script src="../assets/js/core/bootstrap.min.js"></script>
+<script src="../assets/js/argon-dashboard.min.js"></script>
 </body>
 </html>

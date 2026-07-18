@@ -561,6 +561,24 @@ def daftar_pengampu():
         title="Data Guru Pengampu"
     )
 
+@app.route('/hapus_pengampu', methods=['POST'])
+@role_required('admin')
+def hapus_pengampu():
+    if 'username' not in session:
+        flash('Silakan login terlebih dahulu.', 'warning')
+        return redirect(url_for('login'))
+        
+    mapel = request.form.get('mapel')
+    guru = request.form.get('guru')
+    
+    if mapel and guru:
+        guru_mapel_collection.update_one(
+            {"mapel": mapel},
+            {"$pull": {"guru": guru}}
+        )
+        flash(f'Guru {guru} berhasil dihapus dari pengampu {mapel}.', 'success')
+    return redirect(url_for('daftar_pengampu'))
+
 
 #------------------------------------------------------
 # CREATE DAN READ FITUR KELAS, MATA PELAJARAN DAN GURU
