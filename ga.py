@@ -11,6 +11,14 @@ non_akademik = {
     "10.00–10.20", "10.20–10.50", "11.35–12.00", "12.00–12.25", "12.20–13.00"
 }
 
+morning_slots = {
+    "07.30–08.00",
+    "08.00–08.30",
+    "08.30–09.00",
+    "09.00–09.30",
+    "09.30–10.00"
+}
+
 def run_ga(
     guru_mapel,
     preferensi_map,
@@ -19,7 +27,8 @@ def run_ga(
     locked_slots=None,
     global_lock=False,
     jumlah_populasi=50,
-    generasi_maks=200
+    generasi_maks=200,
+    mapel_bobot_map=None
 ):
     print("== MULAI PROSES GENETIC ALGORITHM ==")
     print(f"Jumlah populasi: {jumlah_populasi}, Generasi Maks: {generasi_maks}")
@@ -282,6 +291,13 @@ def run_ga(
 
             if preferensi_map.get(g) and [h, s] not in preferensi_map[g]:
                 konflik += 2
+                
+            # 🔥 PENALTI BOBOT MAPEL
+            if mapel_bobot_map:
+                bobot = mapel_bobot_map.get(m, 'sedang')
+
+                if bobot == 'berat' and s not in morning_slots:
+                    konflik += 3   # penalti (bisa Anda tuning)
 
             slot_kelas.add(key_kls)
             slot_guru.add(key_guru)

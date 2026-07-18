@@ -1,5 +1,42 @@
 {% set current_path = request.path %}
 {% set role = session.get('role') %}
+
+<style>
+/* Fix Active Icon Color */
+.nav-link.active .icon i {
+    color: #ffffff !important;
+}
+
+/* Smooth & Modern Collapse Animation */
+.collapsing {
+    transition: height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+/* Sub-items fade and slide down */
+#akademikMenu .nav-item {
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+#akademikMenu.show .nav-item {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Staggered animation */
+#akademikMenu.show .nav-item:nth-child(1) { transition-delay: 0.05s; }
+#akademikMenu.show .nav-item:nth-child(2) { transition-delay: 0.1s; }
+#akademikMenu.show .nav-item:nth-child(3) { transition-delay: 0.15s; }
+
+/* Animate the dropdown arrow smoothly */
+.nav-link.dropdown-toggle::after {
+    transition: transform 0.3s ease-in-out;
+}
+.nav-link.dropdown-toggle[aria-expanded="true"]::after {
+    transform: rotate(180deg);
+}
+</style>
+
 <aside class="sidenav bg-white navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-4" id="sidenav-main">
   <div class="sidenav-header">
     <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" id="iconSidenav"></i>

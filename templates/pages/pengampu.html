@@ -35,7 +35,7 @@
               </button>
               <a href="{{ url_for('daftar_pengampu') }}"
                  class="btn btn-secondary">
-                Reset
+                Clear Filter
               </a>
             </div>
           </form>
@@ -99,9 +99,18 @@
 
       sliced.forEach(item => {
         let badges = '';
-        item.guru.forEach(g =>
-          badges += `<span class="badge bg-gradient-primary px-3 py-2">${g}</span>`
-        );
+        item.guru.forEach(g => {
+          badges += `
+            <form action="{{ url_for('hapus_pengampu') }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus ${g} dari mapel ${item.mapel}?');">
+                <input type="hidden" name="mapel" value="${item.mapel}">
+                <input type="hidden" name="guru" value="${g}">
+                <span class="badge bg-gradient-primary px-3 py-2 d-inline-flex align-items-center">
+                    ${g}
+                    <button type="submit" class="btn-close btn-close-white ms-2 m-0 p-0" aria-label="Close" style="font-size: 0.5rem;"></button>
+                </span>
+            </form>
+          `;
+        });
 
         tbody.append(`
           <tr>
