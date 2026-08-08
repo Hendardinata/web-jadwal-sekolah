@@ -210,9 +210,6 @@ def run_ga(
                     continue
 
                 for g in kandidat_guru:
-                    if (kls, m, g) in gagal_berurutan:
-                        continue  # Jangan dialokasikan secara acak jika gagal di tahap 1 #tambahanBaru
-
                     jam_per_minggu = get_jam_per_minggu(kls, m, g)
 
                     is_sequential = False
@@ -220,8 +217,8 @@ def run_ga(
                         if entry['kelas'] == kls and entry['mapel'] == m and entry['guru'] == g:
                             is_sequential = entry.get('berurutan', False)
 
-                    if is_sequential:
-                        continue  # Sudah di tahap 1
+                    if is_sequential and (kls, m, g) not in gagal_berurutan:
+                        continue  # Sudah di tahap 1 dan berhasil, skip di tahap 2
 
                     count = 0
                     locked_for_this = [
@@ -237,19 +234,35 @@ def run_ga(
 
                     sisa = jam_per_minggu - count
                     for _ in range(sisa):
-                        attempt = 0
-                        while attempt < 100:
-                            h = random.choice(hari)
-                            s = random.choice(waktu_slot)
-                            if s not in non_akademik and \
-                            (kls, h, s) not in used_kelas and \
-                            (g, h, s) not in used_guru and \
-                            (kls, h, s) not in locked_lookup:
-                                jadwal.append((kls, h, s, m, g))
-                                used_kelas.add((kls, h, s))
-                                used_guru.add((g, h, s))
-                                break
-                            attempt += 1
+                        available_slots = [
+                            (h, s) for h in hari for s in waktu_slot
+                            if s not in non_akademik 
+                            and (kls, h, s) not in used_kelas 
+                            and (g, h, s) not in used_guru 
+                            and (kls, h, s) not in locked_lookup
+                        ]
+                        
+                        if available_slots:
+                            h, s = random.choice(available_slots)
+                        else:
+                            available_for_class = [
+                                (h, s) for h in hari for s in waktu_slot
+                                if s not in non_akademik
+                                and (kls, h, s) not in used_kelas
+                                and (kls, h, s) not in locked_lookup
+                            ]
+                            if available_for_class:
+                                h, s = random.choice(available_for_class)
+                            else:
+                                fallback = [
+                                    (h, s) for h in hari for s in waktu_slot
+                                    if s not in non_akademik and (kls, h, s) not in locked_lookup
+                                ]
+                                h, s = random.choice(fallback)
+                                
+                        jadwal.append((kls, h, s, m, g))
+                        used_kelas.add((kls, h, s))
+                        used_guru.add((g, h, s))
 
         return jadwal
 
@@ -333,30 +346,74 @@ def run_ga(
                 
                 if key_slot in locked_lookup and locked_map[key_slot][1] == g_old:
                     continue
-                kandidat_guru = [
-                    g for g in guru_mapel[m]
-                    if g in guru_kelas_map and kls in guru_kelas_map[g]
+                
+                # Keep the same teacher, only mutate the time slot
+                available_mutations = [
+                    (h, s) for h in hari for s in waktu_slot
+                    if s not in non_akademik and (kls, h, s) not in locked_lookup
                 ]
-                if not kandidat_guru:
+                if available_mutations:
+                    h, s = random.choice(available_mutations)
+                else:
                     continue
-                g = random.choice(kandidat_guru)
-                while True:
-                    h = random.choice(hari)
-                    s = random.choice(waktu_slot)
-                    if s not in non_akademik and (kls, h, s) not in locked_lookup:
-                        break
-                chromosome[i] = (kls, h, s, m, g)
+                chromosome[i] = (kls, h, s, m, g_old)
         return chromosome
 
+    def repair_chromosome(chromosome):
+        # Memetakan slot kosong dan memindahkan duplikat (tumpukan) dengan mempertahankan urutan gen
+        repaired = list(chromosome)
+        by_kelas = {}
+        for i, (kls, h, s, m, g) in enumerate(repaired):
+            by_kelas.setdefault(kls, []).append(i)
+            
+        for kls, indices in by_kelas.items():
+            used_slots = {}
+            duplicates = []
+            
+            # Prioritaskan slot yang terkunci
+            for i in indices:
+                kls_i, h, s, m, g = repaired[i]
+                if (kls_i, h, s) in locked_lookup and locked_map[(kls_i, h, s)] == (m, g):
+                    used_slots[(h, s)] = i
+            
+            # Masukkan yang tidak terkunci, jika slot sudah terisi, masukkan ke duplicates
+            for i in indices:
+                kls_i, h, s, m, g = repaired[i]
+                if (kls_i, h, s) in locked_lookup and locked_map[(kls_i, h, s)] == (m, g):
+                    continue
+                if (h, s) in used_slots:
+                    duplicates.append(i)
+                else:
+                    used_slots[(h, s)] = i
+            
+            # Cari slot kosong yang tersedia
+            all_academic = [(h, s) for h in hari for s in waktu_slot if s not in non_akademik]
+            empty_slots = [slot for slot in all_academic if slot not in used_slots and (kls, slot[0], slot[1]) not in locked_lookup]
+            random.shuffle(empty_slots)
+            
+            # Alihkan jadwal yang bertumpuk ke slot kosong
+            for i in duplicates:
+                kls_i, h, s, m, g = repaired[i]
+                if empty_slots:
+                    new_h, new_s = empty_slots.pop()
+                    repaired[i] = (kls_i, new_h, new_s, m, g)
+                    used_slots[(new_h, new_s)] = i
+                else:
+                    # Jika semua slot sudah full, baru lakukan penimpaan (kembalikan ke slot acak)
+                    rand_h, rand_s = random.choice(all_academic)
+                    repaired[i] = (kls_i, rand_h, rand_s, m, g)
+                    
+        return repaired
+
     print("Membuat populasi awal...")
-    populasi = [generate_chromosome() for _ in range(jumlah_populasi)]
+    populasi = [repair_chromosome(generate_chromosome()) for _ in range(jumlah_populasi)]
     for gen in range(generasi_maks):
         selected = selection(populasi)
         new_population = []
         for _ in range(jumlah_populasi // 2):
             child1, child2 = crossover(selected[0], selected[1])
-            new_population.append(mutate(child1))
-            new_population.append(mutate(child2))
+            new_population.append(repair_chromosome(mutate(child1)))
+            new_population.append(repair_chromosome(mutate(child2)))
         populasi = new_population
 
         if gen % 10 == 0 or gen == generasi_maks - 1:

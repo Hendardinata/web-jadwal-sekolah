@@ -232,11 +232,17 @@ def jadwal():
         kls = doc['kelas']
         hari = doc['hari']
         waktu = doc['waktu']
-
-        data.setdefault(kls, {}).setdefault(hari, {})[waktu] = {
-            "text": f"{doc['mapel']} ({doc['guru']})",
-            "id": str(doc['_id'])
-        }
+        
+        new_text = f"{doc['mapel']} ({doc['guru']})"
+        
+        # Prevent silently overwriting data if GA generates conflicting slots
+        if kls in data and hari in data[kls] and waktu in data[kls][hari]:
+            data[kls][hari][waktu]["text"] += f" | {new_text}"
+        else:
+            data.setdefault(kls, {}).setdefault(hari, {})[waktu] = {
+                "text": new_text,
+                "id": str(doc['_id'])
+            }
 
     semua_kelas = list(kelas_collection.find({}, {'_id': 0, 'nama': 1}))
     semua_mapel = list(guru_mapel_collection.find({}, {'_id': 0, 'mapel': 1}))
@@ -365,7 +371,11 @@ def management_jadwal():
     # === Format data jadwal ke bentuk dictionary agar mudah ditampilkan di tabel ===
     data = {}
     for kls, h, s, m, g in jadwal:
-        data.setdefault(kls, {}).setdefault(h, {})[s] = f"{m} ({g})"
+        new_text = f"{m} ({g})"
+        if kls in data and h in data[kls] and s in data[kls][h]:
+            data[kls][h][s] += f" | {new_text}"
+        else:
+            data.setdefault(kls, {}).setdefault(h, {})[s] = new_text
 
     semua_kelas = list(kelas_collection.find({}, {'_id': 0, 'nama': 1}))
     semua_mapel = list(guru_mapel_collection.find({}, {'_id': 0, 'mapel': 1}))
